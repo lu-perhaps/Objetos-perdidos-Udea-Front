@@ -1,0 +1,528 @@
+import 'dart:ui';
+import 'package:flutter/material.dart';
+import '../main.dart';
+import '../Repositories/notificacion_repository.dart';
+import '../Repositories/persona_repository.dart';
+import 'objetos_list_page.dart';
+import 'reporte_perdida_page.dart';
+import 'notificaciones_page.dart';
+import 'mis_solicitudes_page.dart';
+import 'header_udea.dart';
+
+class HomeUsuarioPage extends StatefulWidget {
+  const HomeUsuarioPage({super.key});
+
+  @override
+  State<HomeUsuarioPage> createState() => _HomeUsuarioPageState();
+}
+
+class _HomeUsuarioPageState extends State<HomeUsuarioPage>
+    with SingleTickerProviderStateMixin {
+  int _noLeidas = 0;
+  String _nombre = 'Usuario';
+
+  late AnimationController _animCtrl;
+  late List<Animation<double>> _fadeAnims;
+  late List<Animation<Offset>> _slideAnims;
+
+  static const int _numCards = 3;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _animCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+
+    _fadeAnims = List.generate(_numCards, (i) {
+      final start = i * 0.15;
+      return CurvedAnimation(
+        parent: _animCtrl,
+        curve: Interval(start, start + 0.6, curve: Curves.easeOut),
+      );
+    });
+
+    _slideAnims = List.generate(_numCards, (i) {
+      final start = i * 0.15;
+      return Tween<Offset>(
+        begin: const Offset(0, 0.1),
+        end: Offset.zero,
+      ).animate(
+        CurvedAnimation(
+          parent: _animCtrl,
+          curve: Interval(start, start + 0.6, curve: Curves.easeOut),
+        ),
+      );
+    });
+
+    _animCtrl.forward();
+    _cargarContador();
+    _cargarNombre();
+  }
+
+  @override
+  void dispose() {
+    _animCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _cargarContador() async {
+    final user = supabase.auth.currentUser;
+
+    if (user == null || user.email == null) return;
+
+    final count = await NotificacionRepository.contarNoLeidas(
+      correo: user.email!.toLowerCase().trim(),
+    );
+
+    if (mounted) setState(() => _noLeidas = count);
+}
+  Future<void> _cargarNombre() async {
+    final persona = await PersonaRepository.obtenerPersonaActual();
+
+    if (persona != null && persona.nombre.isNotEmpty) {
+      if (mounted) {
+        setState(() => _nombre = persona.nombre.split(' ').first);
+      }
+    }
+  }
+
+  Future<void> _cerrarSesion() async {
+    await supabase.auth.signOut();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final isWide = size.width > 600;
+
+    return Scaffold(
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset(
+            'assets/udea_bg.jpeg',
+            fit: BoxFit.cover,
+          ),
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xBB000000),
+                  Color(0xCC021008),
+                  Color(0xEE011208),
+                ],
+                stops: [0.0, 0.5, 1.0],
+              ),
+            ),
+          ),
+          BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+            child: const SizedBox.expand(),
+          ),
+          SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isWide ? size.width * 0.25 : 22,
+                  vertical: 16,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _TopBar(
+                      noLeidas: _noLeidas,
+                      onNotificaciones: () async {
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const NotificacionesPage(),
+                          ),
+                        );
+                        _cargarContador();
+                      },
+                      onCerrarSesion: _cerrarSesion,
+                    ),
+
+                    const SizedBox(height: 28),
+
+                    FadeTransition(
+                      opacity: _fadeAnims[0],
+                      child: SlideTransition(
+                        position: _slideAnims[0],
+                        child: _Saludo(nombre: _nombre),
+                      ),
+                    ),
+
+                    const SizedBox(height: 28),
+
+                    FadeTransition(
+                      opacity: _fadeAnims[0],
+                      child: const Text(
+                        'QUÉ QUIERES HACER',
+                        style: TextStyle(
+                          color: Color(0xFF0A8F4D),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 2.5,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    FadeTransition(
+                      opacity: _fadeAnims[0],
+                      child: SlideTransition(
+                        position: _slideAnims[0],
+                        child: _TarjetaAccion(
+                          icono: Icons.search_rounded,
+                          titulo: 'Buscar objeto perdido',
+                          subtitulo: 'Revisa los objetos encontrados en campus',
+                          colorIcono: const Color(0xFF0A8F4D),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const ObjetosListPage(),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    FadeTransition(
+                      opacity: _fadeAnims[1],
+                      child: SlideTransition(
+                        position: _slideAnims[1],
+                        child: _TarjetaAccion(
+                          icono: Icons.report_gmailerrorred_rounded,
+                          titulo: 'Reportar pérdida',
+                          subtitulo: 'Registra algo que hayas perdido en UdeA',
+                          colorIcono: const Color(0xFFE07B2A),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const ReportePerdidaPage(),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    FadeTransition(
+                      opacity: _fadeAnims[2],
+                      child: SlideTransition(
+                        position: _slideAnims[2],
+                        child: _TarjetaAccion(
+                          icono: Icons.assignment_outlined,
+                          titulo: 'Mis solicitudes',
+                          subtitulo: 'Consulta el estado de tus reclamos',
+                          colorIcono: const Color(0xFF3A7BD5),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const MisSolicitudesPage(),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 40),
+
+                    Center(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          Icon(
+                            Icons.shield_outlined,
+                            color: Colors.white24,
+                            size: 12,
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            'UdeA 2024 · Acceso seguro',
+                            style: TextStyle(
+                              color: Colors.white24,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TopBar extends StatelessWidget {
+  final int noLeidas;
+  final VoidCallback onNotificaciones;
+  final VoidCallback onCerrarSesion;
+
+  const _TopBar({
+    required this.noLeidas,
+    required this.onNotificaciones,
+    required this.onCerrarSesion,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const Expanded(
+          child: HeaderUdea(titulo: 'Objetos Perdidos'),
+        ),
+        const SizedBox(width: 16),
+        Stack(
+          children: [
+            _BtnIcono(
+              icono: Icons.notifications_outlined,
+              onTap: onNotificaciones,
+              tooltip: 'Notificaciones',
+            ),
+            if (noLeidas > 0)
+              Positioned(
+                right: 6,
+                top: 6,
+                child: Container(
+                  width: 16,
+                  height: 16,
+                  decoration: const BoxDecoration(
+                    color: Colors.redAccent,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Text(
+                      '$noLeidas',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(width: 10),
+        _BtnIcono(
+          icono: Icons.logout_rounded,
+          onTap: onCerrarSesion,
+          tooltip: 'Cerrar sesión',
+        ),
+      ],
+    );
+  }
+}
+
+class _Saludo extends StatelessWidget {
+  final String nombre;
+
+  const _Saludo({required this.nombre});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        RichText(
+          text: TextSpan(
+            children: [
+              TextSpan(
+                text: 'Hola, $nombre ',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 30,
+                  fontWeight: FontWeight.w800,
+                  height: 1.1,
+                ),
+              ),
+              const TextSpan(
+                text: '👋',
+                style: TextStyle(fontSize: 26),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'Busca, reporta o entrega objetos\nperdidos en el campus.',
+          style: TextStyle(
+            color: Colors.white54,
+            fontSize: 14,
+            height: 1.5,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _TarjetaAccion extends StatefulWidget {
+  final IconData icono;
+  final String titulo;
+  final String subtitulo;
+  final Color colorIcono;
+  final VoidCallback onTap;
+
+  const _TarjetaAccion({
+    required this.icono,
+    required this.titulo,
+    required this.subtitulo,
+    required this.colorIcono,
+    required this.onTap,
+  });
+
+  @override
+  State<_TarjetaAccion> createState() => _TarjetaAccionState();
+}
+
+class _TarjetaAccionState extends State<_TarjetaAccion> {
+  bool _presionado = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _presionado = true),
+      onTapUp: (_) => setState(() => _presionado = false),
+      onTapCancel: () => setState(() => _presionado = false),
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        scale: _presionado ? 0.97 : 1.0,
+        duration: const Duration(milliseconds: 100),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.07),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: widget.colorIcono.withOpacity(0.3),
+                  width: 1.5,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: widget.colorIcono.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: widget.colorIcono.withOpacity(0.25),
+                      ),
+                    ),
+                    child: Icon(
+                      widget.icono,
+                      color: widget.colorIcono,
+                      size: 26,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.titulo,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          widget.subtitulo,
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.5),
+                            fontSize: 12,
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: widget.colorIcono.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.arrow_forward_rounded,
+                      color: widget.colorIcono,
+                      size: 16,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BtnIcono extends StatelessWidget {
+  final IconData icono;
+  final VoidCallback onTap;
+  final String tooltip;
+
+  const _BtnIcono({
+    required this.icono,
+    required this.onTap,
+    required this.tooltip,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.06),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.08),
+            ),
+          ),
+          child: Icon(
+            icono,
+            color: Colors.white70,
+            size: 20,
+          ),
+        ),
+      ),
+    );
+  }
+}
