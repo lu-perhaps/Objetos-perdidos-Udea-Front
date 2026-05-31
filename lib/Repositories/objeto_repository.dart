@@ -51,6 +51,7 @@ class ObjetoRepository {
           'idLugarEncontrado': idLugarEncontrado,
           'idLugarActual': idLugarActual,
           'correoAdmin': user.email!.toLowerCase().trim(),
+          'publicar': publicar,
         }),
       );
 
@@ -102,6 +103,23 @@ class ObjetoRepository {
       return [];
     }
   }
+
+  static Future<List<Map<String, dynamic>>> obtenerObjetosAdmin() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/objetos/admin'),
+      );
+
+      if (response.statusCode != 200) return [];
+
+      final List<dynamic> data = jsonDecode(response.body);
+      return List<Map<String, dynamic>>.from(data);
+    } catch (e) {
+      debugPrint('ERROR obtenerObjetosAdmin API: $e');
+      return [];
+    }
+  }
+
     // Sube la imagen al Storage y retorna la ruta
   static Future<void> subirImagen({
     required String rutaStorage,

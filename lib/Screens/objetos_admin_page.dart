@@ -1,18 +1,17 @@
-import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import '../Constants/api_config.dart';
+
+import '../Repositories/objeto_repository.dart';
 import 'objeto_detail_page.dart';
 
-class ObjetosListPage extends StatefulWidget {
-  const ObjetosListPage({super.key});
+class ObjetosAdminPage extends StatefulWidget {
+  const ObjetosAdminPage({super.key});
 
   @override
-  State<ObjetosListPage> createState() => _ObjetosListPageState();
+  State<ObjetosAdminPage> createState() => _ObjetosAdminPageState();
 }
 
-class _ObjetosListPageState extends State<ObjetosListPage> {
+class _ObjetosAdminPageState extends State<ObjetosAdminPage> {
   List<Map<String, dynamic>> objetos = [];
   bool cargando = true;
   String busqueda = '';
@@ -25,31 +24,19 @@ class _ObjetosListPageState extends State<ObjetosListPage> {
 
   Future<void> cargarObjetos() async {
     try {
-      final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/api/objetos'),
-      );
-
-      if (response.statusCode != 200) {
-        throw Exception('Error del servidor: ${response.statusCode}');
-      }
-
-      final List<dynamic> data = jsonDecode(response.body);
-
+      final data = await ObjetoRepository.obtenerObjetosAdmin();
       setState(() {
-        objetos = List<Map<String, dynamic>>.from(data);
+        objetos = data;
         cargando = false;
       });
     } catch (e) {
-      debugPrint('ERROR CARGANDO OBJETOS DESDE BACKEND: $e');
-
+      debugPrint('ERROR CARGANDO INVENTARIO ADMIN: $e');
       if (!mounted) return;
-
       setState(() {
         cargando = false;
       });
-
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error cargando objetos: $e')),
+        SnackBar(content: Text('Error cargando inventario: $e')),
       );
     }
   }
@@ -58,11 +45,9 @@ class _ObjetosListPageState extends State<ObjetosListPage> {
   Widget build(BuildContext context) {
     final filtrados = objetos.where((obj) {
       final nombre = (obj['nombre'] ?? '').toString().toLowerCase();
-      final categoria = (
-        obj['categoria'] ??
-        obj['tbl_categoria']?['nombre'] ??
-        ''
-      ).toString().toLowerCase();
+      final categoria = (obj['categoria'] ?? obj['tbl_categoria']?['nombre'] ?? '')
+          .toString()
+          .toLowerCase();
       final descripcion = (
         obj['descripcionGeneral'] ??
         obj['descripcion_general'] ??
@@ -102,7 +87,7 @@ class _ObjetosListPageState extends State<ObjetosListPage> {
                       ),
                       const Expanded(
                         child: Text(
-                          'BUSCAR OBJETOS',
+                          'INVENTARIO COMPLETO',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: Colors.white,
@@ -132,7 +117,7 @@ class _ObjetosListPageState extends State<ObjetosListPage> {
                       });
                     },
                     decoration: InputDecoration(
-                      hintText: '¿Qué perdiste?...',
+                      hintText: 'Buscar en el inventario...',
                       prefixIcon:
                           const Icon(Icons.search, color: Colors.black54),
                       filled: true,
@@ -167,7 +152,7 @@ class _ObjetosListPageState extends State<ObjetosListPage> {
                         : filtrados.isEmpty
                             ? const Center(
                                 child: Text(
-                                  'No hay objetos publicados',
+                                  'No hay objetos en el inventario',
                                   style: TextStyle(
                                     color: Colors.white70,
                                     fontSize: 18,
@@ -178,8 +163,9 @@ class _ObjetosListPageState extends State<ObjetosListPage> {
                                 itemCount: filtrados.length,
                                 itemBuilder: (context, index) {
                                   final objeto = filtrados[index];
-                                  final nombre = (objeto['nombre'] ?? 'Sin nombre')
-                                      .toString();
+                                  final nombre =
+                                      (objeto['nombre'] ?? 'Sin nombre')
+                                          .toString();
                                   final descripcion = (
                                     objeto['descripcionGeneral'] ??
                                     objeto['descripcion_general'] ??

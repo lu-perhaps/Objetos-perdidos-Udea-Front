@@ -30,14 +30,38 @@ class _ObjetoDetailPageState extends State<ObjetoDetailPage> {
   @override
   Widget build(BuildContext context) {
     final objeto = widget.objeto;
-    final categoria =
-        ((objeto['tbl_categoria']?['nombre']) ?? 'Objeto encontrado')
-            .toString();
-    final descripcionGeneral =
-        (objeto['descripcion_general'] ?? 'Sin descripción').toString();
-    final descripcionDetallada =
-        (objeto['descripcion_detallada'] ?? '').toString();
-    final fechaHallazgo = (objeto['fecha_hallazgo'] ?? '').toString();
+    final categoria = (
+      objeto['categoria'] ??
+      objeto['tbl_categoria']?['nombre'] ??
+      'Objeto encontrado'
+    ).toString();
+    final descripcionGeneral = (
+      objeto['descripcionGeneral'] ??
+      objeto['descripcion_general'] ??
+      'Sin descripción'
+    ).toString();
+    final descripcionDetallada = (
+      objeto['descripcionDetallada'] ??
+      objeto['descripcion_detallada'] ??
+      ''
+    ).toString();
+    final fechaHallazgo = (
+      objeto['fechaHallazgo'] ??
+      objeto['fecha_hallazgo'] ??
+      ''
+    ).toString();
+    final lugarEncontrado = (
+      objeto['lugarEncontrado'] ??
+      objeto['lugar_encontrado'] ??
+      objeto['lugarEncontradoNombre'] ??
+      'No registrado'
+    ).toString();
+    final lugarActual = (
+      objeto['lugarActual'] ??
+      objeto['lugar_actual'] ??
+      objeto['lugarActualNombre'] ??
+      'No registrado'
+    ).toString();
     final fotoUrl = (objeto['fotografia'] ?? '').toString();
     final nombre = (objeto['nombre'] ?? 'Sin nombre').toString();
 
@@ -168,6 +192,16 @@ class _ObjetoDetailPageState extends State<ObjetoDetailPage> {
                         icono: Icons.description_outlined,
                         label: 'Descripción',
                         valor: descripcionGeneral,
+                      ),
+                      _FilaInfo(
+                        icono: Icons.location_on_outlined,
+                        label: 'Lugar encontrado',
+                        valor: lugarEncontrado,
+                      ),
+                      _FilaInfo(
+                        icono: Icons.place_outlined,
+                        label: 'Ubicación actual',
+                        valor: lugarActual,
                       ),
                       _FilaInfo(
                         icono: Icons.calendar_today_outlined,

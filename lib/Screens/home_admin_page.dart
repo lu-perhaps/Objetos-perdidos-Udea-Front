@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../main.dart';
 import 'solicitudes_admin_page.dart';
 import 'registro_objeto_page.dart';
+import 'objetos_admin_page.dart';
 import 'objetos_list_page.dart';
 import 'reportes_admin_page.dart';
 import 'objetos_vencidos_page.dart';
@@ -22,7 +23,7 @@ class _HomeAdminPageState extends State<HomeAdminPage>
   late List<Animation<double>> _fadeAnims;
   late List<Animation<Offset>> _slideAnims;
 
-  static const int _numOpciones = 6;
+  static const int _numOpciones = 7;
 
   @override
   void initState() {
@@ -277,6 +278,14 @@ List<_OpcionData> _opciones(BuildContext context) => [
         color: const Color(0xFF8B5CF6),
         onTap: () => Navigator.push(context,
             MaterialPageRoute(builder: (_) => const ObjetosListPage())),
+      ),
+      _OpcionData(
+        icono: Icons.inventory_outlined,
+        titulo: 'Inventario completo',
+        subtitulo: 'Ver todos los objetos guardados',
+        color: const Color(0xFF22C55E),
+        onTap: () => Navigator.push(context,
+            MaterialPageRoute(builder: (_) => const ObjetosAdminPage())),
       ),
       _OpcionData(
         icono: Icons.people_outline,
