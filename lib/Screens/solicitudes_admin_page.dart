@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../Constants/api_config.dart';
+import '../Repositories/solicitud_repository.dart';
 
 class SolicitudesAdminPage extends StatefulWidget {
   const SolicitudesAdminPage({super.key});
@@ -72,6 +73,45 @@ class _SolicitudesAdminPageState extends State<SolicitudesAdminPage> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error actualizando estado: $e')),
+      );
+    }
+  }
+
+  Future<void> registrarEntrega(int idSolicitud) async {
+    final confirmado = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Registrar entrega'),
+        content: const Text(
+          '¿Confirmas que el objeto fue entregado al solicitante?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Confirmar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmado != true) return;
+
+    final success = await SolicitudRepository.entregarSolicitud(idSolicitud);
+
+    if (!mounted) return;
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Entrega registrada con éxito')),
+      );
+      await cargarSolicitudes();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Error registrando entrega')),
       );
     }
   }
@@ -324,6 +364,22 @@ class _SolicitudesAdminPageState extends State<SolicitudesAdminPage> {
                                                 ),
                                               ),
                                             ],
+                                          ),
+                                        ],
+                                        if (estado == 9) ...[
+                                          const SizedBox(height: 12),
+                                          ElevatedButton(
+                                            onPressed: () =>
+                                                registrarEntrega(s['id']),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.blue,
+                                            ),
+                                            child: const Text(
+                                              'Registrar entrega',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                              ),
+                                            ),
                                           ),
                                         ],
                                       ],
