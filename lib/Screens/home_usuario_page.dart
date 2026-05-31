@@ -38,21 +38,23 @@ class _HomeUsuarioPageState extends State<HomeUsuarioPage>
 
     _fadeAnims = List.generate(_numCards, (i) {
       final start = i * 0.15;
+      final end = (start + 0.6).clamp(0.0, 1.0);
       return CurvedAnimation(
         parent: _animCtrl,
-        curve: Interval(start, start + 0.6, curve: Curves.easeOut),
+        curve: Interval(start, end, curve: Curves.easeOut),
       );
     });
 
     _slideAnims = List.generate(_numCards, (i) {
       final start = i * 0.15;
+      final end = (start + 0.6).clamp(0.0, 1.0);
       return Tween<Offset>(
         begin: const Offset(0, 0.1),
         end: Offset.zero,
       ).animate(
         CurvedAnimation(
           parent: _animCtrl,
-          curve: Interval(start, start + 0.6, curve: Curves.easeOut),
+          curve: Interval(start, end, curve: Curves.easeOut),
         ),
       );
     });

@@ -34,19 +34,21 @@ class _HomeAdminPageState extends State<HomeAdminPage>
     );
     _fadeAnims = List.generate(_numOpciones, (i) {
       final start = i * 0.1;
+      final end = (start + 0.5).clamp(0.0, 1.0);
       return CurvedAnimation(
         parent: _animCtrl,
-        curve: Interval(start, start + 0.5, curve: Curves.easeOut),
+        curve: Interval(start, end, curve: Curves.easeOut),
       );
     });
     _slideAnims = List.generate(_numOpciones, (i) {
       final start = i * 0.1;
+      final end = (start + 0.5).clamp(0.0, 1.0);
       return Tween<Offset>(
         begin: const Offset(0, 0.08),
         end: Offset.zero,
       ).animate(CurvedAnimation(
         parent: _animCtrl,
-        curve: Interval(start, start + 0.5, curve: Curves.easeOut),
+        curve: Interval(start, end, curve: Curves.easeOut),
       ));
     });
     _animCtrl.forward();

@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 
+import '../Constants/estados.dart';
 import '../Repositories/objeto_repository.dart';
 import 'objeto_detail_page.dart';
 
@@ -38,6 +39,27 @@ class _ObjetosAdminPageState extends State<ObjetosAdminPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error cargando inventario: $e')),
       );
+    }
+  }
+
+  String _nombreEstado(dynamic idEstado) {
+    return Estados.nombreEstadoObjeto(idEstado);
+  }
+
+  Color _estadoChipColor(String estado) {
+    switch (estado.toLowerCase()) {
+      case 'disponible':
+        return const Color(0xFF2E7D32);
+      case 'en custodia':
+        return const Color(0xFF1565C0);
+      case 'entregado':
+        return const Color(0xFFEF6C00);
+      case 'donado':
+        return const Color(0xFF6A1B9A);
+      case 'desechado':
+        return const Color(0xFFC62828);
+      default:
+        return const Color(0xFF455A64);
     }
   }
 
@@ -186,6 +208,10 @@ class _ObjetosAdminPageState extends State<ObjetosAdminPage> {
                                     objeto['lugar_actual'] ??
                                     'No registrado'
                                   ).toString();
+                                  final estado = objeto['estado']?.toString() ??
+                                      _nombreEstado(
+                                        objeto['idEstado'] ?? objeto['id_estado'],
+                                      );
 
                                   return GestureDetector(
                                     onTap: () {
@@ -227,6 +253,17 @@ class _ObjetosAdminPageState extends State<ObjetosAdminPage> {
                                               color: Colors.white70,
                                               fontSize: 16,
                                             ),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Chip(
+                                            label: Text(
+                                              estado,
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                            backgroundColor: _estadoChipColor(estado),
                                           ),
                                           const SizedBox(height: 6),
                                           Text(

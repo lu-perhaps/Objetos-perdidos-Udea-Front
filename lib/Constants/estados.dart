@@ -30,4 +30,22 @@ class Estados {
   // ── Donación y Desecho ───────────────────────────────────────
   static const int objetoDonado = 14;
   static const int objetoDesecho = 15;
+
+  static String nombreEstadoObjeto(dynamic idEstado) {
+    final id = int.tryParse(idEstado?.toString() ?? '') ?? -1;
+    switch (id) {
+      case objetoEnCustodia:
+        return 'En custodia';
+      case objetoEntregado:
+        return 'Entregado';
+      case objetoDisponible:
+        return 'Disponible';
+      case objetoDonado:
+        return 'Donado';
+      case objetoDesecho:
+        return 'Desechado';
+      default:
+        return 'Sin estado';
+    }
+  }
 }
