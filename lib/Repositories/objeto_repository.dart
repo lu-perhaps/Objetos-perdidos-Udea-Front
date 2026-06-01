@@ -179,69 +179,52 @@ class ObjetoRepository {
         .from('objetos-imagenes')
         .getPublicUrl(rutaStorage);
   }
-  // Obtiene objetos vencidos (fecha_hallazgo + tiempo_maximo > hoy)
+  // Obtiene objetos vencidos desde la API de backend
   static Future<List<Map<String, dynamic>>> obtenerObjetosVencidos() async {
     try {
-      final data = await supabase
-          .from('tbl_objeto')
-          .select('''
-            id,
-            nombre,
-            descripcion_general,
-            fotografia,
-            fecha_hallazgo,
-            id_estado,
-            tbl_categoria (
-              nombre,
-              tiempo_maximo_almacenamiento
-            ),
-            lugar_actual:tbl_lugar!fk_objeto_lugar_actual (
-              nombre
-            )
-          ''')
-          .inFilter('id_estado', [
-            Estados.objetoEnCustodia,
-            Estados.objetoDisponible,
-          ]);
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/objetos/vencidos'),
+      );
 
-      final hoy = DateTime.now();
-      final vencidos = (data as List).where((obj) {
-        final fechaStr = obj['fecha_hallazgo'];
-        final tiempoMax =
-            obj['tbl_categoria']?['tiempo_maximo_almacenamiento'] as int?;
-        if (fechaStr == null || tiempoMax == null) return false;
-        final fecha = DateTime.tryParse(fechaStr);
-        if (fecha == null) return false;
-        final fechaVencimiento = fecha.add(Duration(days: tiempoMax));
-        return hoy.isAfter(fechaVencimiento);
-      }).toList();
+      if (response.statusCode != 200) {
+        debugPrint(
+          'ERROR obtenerObjetosVencidos API: ${response.statusCode} ${response.body}',
+        );
+        return [];
+      }
 
-      return List<Map<String, dynamic>>.from(vencidos);
+      final List<dynamic> data = jsonDecode(response.body);
+      return List<Map<String, dynamic>>.from(data);
     } catch (e) {
-      debugPrint('ERROR obtenerObjetosVencidos: $e');
+      debugPrint('ERROR obtenerObjetosVencidos API: $e');
       return [];
     }
   }
 
-  // Cambia estado del objeto y oculta su publicación
+  // Cambia disposición final por API
   static Future<bool> registrarDisposicionFinal({
     required int idObjeto,
     required int nuevoEstado,
   }) async {
     try {
-      await supabase
-          .from('tbl_objeto')
-          .update({'id_estado': nuevoEstado})
-          .eq('id', idObjeto);
+      final endpoint = nuevoEstado == Estados.objetoDonado
+          ? 'donar'
+          : 'desechar';
 
-      await supabase
-          .from('tbl_publicacion')
-          .update({'id_estado': Estados.publicacionOculta})
-          .eq('id_objeto', idObjeto);
+      final response = await http.put(
+        Uri.parse('${ApiConfig.baseUrl}/api/objetos/$idObjeto/$endpoint'),
+      );
+
+      if (response.statusCode != 200) {
+        debugPrint(
+          'ERROR registrarDisposicionFinal API: ${response.statusCode} ${response.body}',
+        );
+        return false;
+      }
 
       return true;
     } catch (e) {
-      debugPrint('ERROR registrarDisposicionFinal: $e');
+      debugPrint('ERROR registrarDisposicionFinal API: $e');
       return false;
     }
   }

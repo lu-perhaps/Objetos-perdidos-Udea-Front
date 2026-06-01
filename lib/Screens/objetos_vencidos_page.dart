@@ -43,7 +43,10 @@ class _ObjetosVencidosPageState extends State<ObjetosVencidosPage> {
   }
 
   int _tiempoMax(Map<String, dynamic> obj) =>
-      obj['tbl_categoria']?['tiempo_maximo_almacenamiento'] as int? ?? 0;
+      obj['tiempoMaximoAlmacenamiento'] as int? ??
+      obj['tiempo_maximo_almacenamiento'] as int? ??
+      obj['tbl_categoria']?['tiempo_maximo_almacenamiento'] as int? ??
+      0;
 
   Future<void> _mostrarDialogoDisposicion(
       Map<String, dynamic> obj, int nuevoEstado) async {
@@ -289,8 +292,9 @@ class _ObjetosVencidosPageState extends State<ObjetosVencidosPage> {
                                 itemCount: _objetos.length,
                                 itemBuilder: (_, i) {
                                   final obj = _objetos[i];
-                                  final dias =
-                                      _diasAlmacenado(obj['fecha_hallazgo']);
+                                  final dias = _diasAlmacenado(
+                                    (obj['fechaHallazgo'] ?? obj['fecha_hallazgo'])?.toString(),
+                                  );
                                   final tiempoMax = _tiempoMax(obj);
                                   final diasVencido = dias - tiempoMax;
                                   final fotoUrl =
@@ -413,8 +417,10 @@ class _TarjetaVencido extends StatelessWidget {
                     // Info
                     _InfoChip(
                       icono: Icons.category_outlined,
-                      texto:
-                          obj['tbl_categoria']?['nombre'] ?? 'Sin categoría',
+                      texto: (obj['categoria'] ??
+                              obj['tbl_categoria']?['nombre'] ??
+                              'Sin categoría')
+                          .toString(),
                     ),
                     const SizedBox(height: 4),
                     _InfoChip(
@@ -424,7 +430,10 @@ class _TarjetaVencido extends StatelessWidget {
                     ),
                     _InfoChip(
                       icono: Icons.location_on_outlined,
-                      texto: obj['lugar_actual']?['nombre'] ?? 'Sin lugar',
+                      texto: (obj['lugarActual'] ??
+                              obj['lugar_actual']?['nombre'] ??
+                              'Sin lugar')
+                          .toString(),
                     ),
 
                     const SizedBox(height: 14),
