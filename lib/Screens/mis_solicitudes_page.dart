@@ -2,7 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../constants/estados.dart';
 import '../Repositories/solicitud_repository.dart';
-import '../Repositories/persona_repository.dart';
+import '../main.dart';
 
 class MisSolicitudesPage extends StatefulWidget {
   const MisSolicitudesPage({super.key});
@@ -55,17 +55,17 @@ class _MisSolicitudesPageState extends State<MisSolicitudesPage>
   }
 
   Future<void> _cargarSolicitudes() async {
-    final idPersona = await PersonaRepository.obtenerIdPersonaActual();
+    final user = supabase.auth.currentUser;
 
-    if (idPersona == null) {
+    if (user == null || user.email == null) {
       if (mounted) {
         setState(() => _cargando = false);
       }
       return;
     }
 
-    final data = await SolicitudRepository.obtenerSolicitudesDePersona(
-      idPersona: idPersona,
+    final data = await SolicitudRepository.obtenerSolicitudesDeUsuario(
+      correo: user.email!.toLowerCase().trim(),
     );
 
     if (mounted) {
@@ -278,7 +278,10 @@ class _MisSolicitudesPageState extends State<MisSolicitudesPage>
       itemBuilder: (_, i) {
         final s = _solicitudes[i];
 
-        final estado = int.tryParse(s['id_estado'].toString()) ?? -1;
+        final estado = int.tryParse(
+              (s['idEstado'] ?? s['id_estado'] ?? -1).toString(),
+            ) ??
+            -1;
 
         return _TarjetaSolicitud(
           solicitud: s,
@@ -318,24 +321,40 @@ class _TarjetaSolicitudState extends State<_TarjetaSolicitud> {
   Widget build(BuildContext context) {
     final s = widget.solicitud;
 
-    final fotoUrl = (s['tbl_objeto']?['fotografia'] ?? '').toString();
+    final fotoUrl = (
+      s['fotografia'] ??
+      s['tbl_objeto']?['fotografia'] ??
+      ''
+    ).toString();
 
-    final nombreLugar =
-        s['tbl_objeto']?['lugar_actual']?['nombre'] ??
-        'la oficina correspondiente';
+    final nombreLugar = (
+      s['lugar'] ??
+      s['tbl_objeto']?['lugar_actual']?['nombre'] ??
+      'la oficina correspondiente'
+    ).toString();
 
-    final esCoincidencia = s['id_reporte'] != null;
+    final esCoincidencia = s['idReporte'] != null || s['id_reporte'] != null;
 
     final descripcionSolicitud =
         (s['descripcion'] ?? 'Sin descripción').toString();
 
-    final descripcionObjeto =
-        (s['tbl_objeto']?['descripcion_general'] ?? '').toString();
+    final descripcionObjeto = (
+      s['descripcionObjeto'] ??
+      s['tbl_objeto']?['descripcion_general'] ??
+      ''
+    ).toString();
 
-    final nombreObjeto = (s['tbl_objeto']?['nombre'] ?? 'Objeto').toString();
+    final nombreObjeto = (
+      s['objeto'] ??
+      s['tbl_objeto']?['nombre'] ??
+      'Objeto'
+    ).toString();
 
-    final fechaPerdida =
-        s['fecha_aprox_perdida']?.toString() ?? 'No especificada';
+    final fechaPerdida = (
+      s['fechaAproxPerdida'] ??
+      s['fecha_aprox_perdida'] ??
+      'No especificada'
+    ).toString();
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -586,6 +605,77 @@ class _TarjetaSolicitudState extends State<_TarjetaSolicitud> {
                                   icono: Icons.inventory_2_outlined,
                                   mensaje:
                                       'Objeto entregado. El proceso de reclamo fue finalizado.',
+                                ),
+                              ],
+
+                              if (widget.estado ==
+                                  Estados.solicitudPendiente) ...[
+                                const SizedBox(height: 14),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: OutlinedButton.icon(
+                                    onPressed: () async {
+                                      final confirmar = await showDialog<bool>(
+                                        context: context,
+                                        builder: (ctx) => AlertDialog(
+                                          title: const Text('Anular solicitud'),
+                                          content: const Text(
+                                            '¿Seguro que quieres anular esta solicitud? Solo deberías hacerlo si ya no necesitas reclamar este objeto.',
+                                          ),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () => Navigator.pop(ctx, false),
+                                              child: const Text('Cancelar'),
+                                            ),
+                                            TextButton(
+                                              onPressed: () => Navigator.pop(ctx, true),
+                                              child: const Text('Anular'),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+
+                                      if (confirmar != true) return;
+
+                                      final idSolicitud = int.tryParse(
+                                        widget.solicitud['id']?.toString() ?? '',
+                                      );
+
+                                      if (idSolicitud == null) {
+                                        if (!context.mounted) return;
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              'ID de solicitud inválido, no se puede anular.',
+                                            ),
+                                          ),
+                                        );
+                                        return;
+                                      }
+
+                                      final ok = await SolicitudRepository.anularSolicitud(
+                                        idSolicitud,
+                                      );
+
+                                      if (!context.mounted) return;
+
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            ok
+                                                ? 'Solicitud anulada correctamente'
+                                                : 'No se pudo anular la solicitud',
+                                          ),
+                                        ),
+                                      );
+
+                                      if (ok) {
+                                        Navigator.pop(context);
+                                      }
+                                    },
+                                    icon: const Icon(Icons.cancel_outlined),
+                                    label: const Text('Anular solicitud'),
+                                  ),
                                 ),
                               ],
                             ],

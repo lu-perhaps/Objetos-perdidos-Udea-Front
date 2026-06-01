@@ -43,6 +43,29 @@ class SolicitudRepository {
     }
   }
 
+  static Future<List<Map<String, dynamic>>> obtenerSolicitudesDeUsuario({
+    required String correo,
+  }) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/solicitudes/usuario/$correo'),
+      );
+
+      if (response.statusCode != 200) {
+        debugPrint(
+          'ERROR obtenerSolicitudesDeUsuario API: ${response.statusCode} ${response.body}',
+        );
+        return [];
+      }
+
+      final List data = jsonDecode(response.body);
+      return List<Map<String, dynamic>>.from(data);
+    } catch (e) {
+      debugPrint('ERROR obtenerSolicitudesDeUsuario API: $e');
+      return [];
+    }
+  }
+
   static Future<bool> entregarSolicitud(int idSolicitud) async {
     try {
       final user = supabase.auth.currentUser;
@@ -69,6 +92,25 @@ class SolicitudRepository {
       return false;
     } catch (e) {
       debugPrint('ERROR entregarSolicitud: $e');
+      return false;
+    }
+  }
+  static Future<bool> anularSolicitud(int idSolicitud) async {
+    try {
+      final response = await http.put(
+        Uri.parse('${ApiConfig.baseUrl}/api/solicitudes/$idSolicitud/anular'),
+      );
+
+      if (response.statusCode != 200) {
+        debugPrint(
+          'ERROR anularSolicitud API: ${response.statusCode} ${response.body}',
+        );
+        return false;
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint('ERROR anularSolicitud API: $e');
       return false;
     }
   }

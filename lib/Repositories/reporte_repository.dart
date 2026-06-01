@@ -85,4 +85,47 @@ class ReporteRepository {
   }) async {
     return [];
   }
+
+  static Future<List<Map<String, dynamic>>> obtenerReportesDeUsuario({
+    required String correo,
+  }) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/reportes/usuario/$correo'),
+      );
+
+      if (response.statusCode != 200) {
+        debugPrint(
+          'ERROR obtenerReportesDeUsuario API: ${response.statusCode} ${response.body}',
+        );
+        return [];
+      }
+
+      final List data = jsonDecode(response.body);
+      return List<Map<String, dynamic>>.from(data);
+    } catch (e) {
+      debugPrint('ERROR obtenerReportesDeUsuario API: $e');
+      return [];
+    }
+  }
+
+  static Future<bool> anularReporte(int idReporte) async {
+    try {
+      final response = await http.put(
+        Uri.parse('${ApiConfig.baseUrl}/api/reportes/$idReporte/anular'),
+      );
+
+      if (response.statusCode != 200) {
+        debugPrint(
+          'ERROR anularReporte API: ${response.statusCode} ${response.body}',
+        );
+        return false;
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint('ERROR anularReporte API: $e');
+      return false;
+    }
+  }
 }

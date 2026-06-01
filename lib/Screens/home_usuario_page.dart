@@ -6,6 +6,7 @@ import '../Repositories/persona_repository.dart';
 import 'objetos_list_page.dart';
 import 'reporte_perdida_page.dart';
 import 'notificaciones_page.dart';
+import 'mis_reportes_page.dart';
 import 'mis_solicitudes_page.dart';
 import 'header_udea.dart';
 
@@ -256,6 +257,27 @@ class _HomeUsuarioPageState extends State<HomeUsuarioPage>
                             context,
                             MaterialPageRoute(
                               builder: (_) => const MisSolicitudesPage(),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    FadeTransition(
+                      opacity: _fadeAnims[2],
+                      child: SlideTransition(
+                        position: _slideAnims[2],
+                        child: _TarjetaAccion(
+                          icono: Icons.article_outlined,
+                          titulo: 'Mis reportes',
+                          subtitulo: 'Revisa y anula tus reportes activos',
+                          colorIcono: const Color(0xFF8A32B0),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const MisReportesPage(),
                             ),
                           ),
                         ),
