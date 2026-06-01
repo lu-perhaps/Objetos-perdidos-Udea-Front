@@ -106,4 +106,24 @@ class PersonaRepository {
       return null;
     }
   }
+  static Future<List<Map<String, dynamic>>> obtenerEstudiantes() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/personas/estudiantes'),
+      );
+
+      if (response.statusCode != 200) {
+        debugPrint(
+          'ERROR obtenerEstudiantes API: ${response.statusCode} ${response.body}',
+        );
+        return [];
+      }
+
+      final List<dynamic> data = jsonDecode(response.body);
+      return List<Map<String, dynamic>>.from(data);
+    } catch (e) {
+      debugPrint('ERROR obtenerEstudiantes API: $e');
+      return [];
+    }
+  }
 }

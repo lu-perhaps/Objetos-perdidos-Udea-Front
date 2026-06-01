@@ -1,7 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+
 import '../Constants/app_colors.dart';
-import '../main.dart';
+import '../Repositories/persona_repository.dart';
 
 class DirectorioPersonasPage extends StatefulWidget {
   const DirectorioPersonasPage({super.key});
@@ -24,15 +25,27 @@ class _DirectorioPersonasPageState extends State<DirectorioPersonasPage>
   @override
   void initState() {
     super.initState();
+
     _animCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600),
     );
-    _fadeAnim = CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut);
+
+    _fadeAnim = CurvedAnimation(
+      parent: _animCtrl,
+      curve: Curves.easeOut,
+    );
+
     _slideAnim = Tween<Offset>(
       begin: const Offset(0, 0.05),
       end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut));
+    ).animate(
+      CurvedAnimation(
+        parent: _animCtrl,
+        curve: Curves.easeOut,
+      ),
+    );
+
     _animCtrl.forward();
     _cargarPersonas();
     _busquedaCtrl.addListener(_filtrar);
@@ -47,42 +60,49 @@ class _DirectorioPersonasPageState extends State<DirectorioPersonasPage>
 
   Future<void> _cargarPersonas() async {
     try {
-      final data = await supabase
-          .from('tbl_persona')
-          .select('''
-            id, nombre, correo, celular,
-            num_documento, id_rol,
-            tbl_tipo_documento (nombre)
-          ''')
-          .eq('id_rol', 1)
-          .order('nombre', ascending: true);
+      final data = await PersonaRepository.obtenerEstudiantes();
+
+      if (!mounted) return;
 
       setState(() {
-        _todas = List<Map<String, dynamic>>.from(data);
+        _todas = data;
         _filtradas = _todas;
         _cargando = false;
       });
     } catch (e) {
-      debugPrint('ERROR cargarPersonas: $e');
+      debugPrint('ERROR cargarPersonas API: $e');
+      if (!mounted) return;
       setState(() => _cargando = false);
     }
   }
 
   void _filtrar() {
     final q = _busquedaCtrl.text.trim().toLowerCase();
+
     setState(() {
       _filtradas = q.isEmpty
           ? _todas
           : _todas.where((p) {
               final nombre = (p['nombre'] ?? '').toString().toLowerCase();
-              final doc =
-                  (p['num_documento'] ?? '').toString().toLowerCase();
+              final doc = (p['numDocumento'] ??
+                      p['num_documento'] ??
+                      '')
+                  .toString()
+                  .toLowerCase();
               final correo = (p['correo'] ?? '').toString().toLowerCase();
+              final celular = (p['celular'] ?? '').toString().toLowerCase();
+
               return nombre.contains(q) ||
                   doc.contains(q) ||
-                  correo.contains(q);
+                  correo.contains(q) ||
+                  celular.contains(q);
             }).toList();
     });
+  }
+
+  Future<void> _refrescar() async {
+    setState(() => _cargando = true);
+    await _cargarPersonas();
   }
 
   @override
@@ -94,9 +114,7 @@ class _DirectorioPersonasPageState extends State<DirectorioPersonasPage>
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // ── Fondo UdeA ─────────────────────────────────────────────
           Image.asset('assets/udea_bg.jpeg', fit: BoxFit.cover),
-
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
@@ -106,13 +124,10 @@ class _DirectorioPersonasPageState extends State<DirectorioPersonasPage>
               ),
             ),
           ),
-
           BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
             child: const SizedBox.expand(),
           ),
-
-          // ── Contenido ───────────────────────────────────────────────
           SafeArea(
             child: FadeTransition(
               opacity: _fadeAnim,
@@ -125,20 +140,16 @@ class _DirectorioPersonasPageState extends State<DirectorioPersonasPage>
                   ),
                   child: Column(
                     children: [
-                      // ── Header ────────────────────────────────────
-                      _Header(),
-
+                      _Header(onRefresh: _refrescar),
                       const SizedBox(height: 20),
-
-                      // ── Buscador ──────────────────────────────────
-                      _Buscador(ctrl: _busquedaCtrl, onClear: () {
-                        _busquedaCtrl.clear();
-                        _filtrar();
-                      }),
-
+                      _Buscador(
+                        ctrl: _busquedaCtrl,
+                        onClear: () {
+                          _busquedaCtrl.clear();
+                          _filtrar();
+                        },
+                      ),
                       const SizedBox(height: 10),
-
-                      // ── Contador ──────────────────────────────────
                       Align(
                         alignment: Alignment.centerRight,
                         child: AnimatedSwitcher(
@@ -153,10 +164,7 @@ class _DirectorioPersonasPageState extends State<DirectorioPersonasPage>
                           ),
                         ),
                       ),
-
                       const SizedBox(height: 10),
-
-                      // ── Lista ─────────────────────────────────────
                       Expanded(child: _buildContenido()),
                     ],
                   ),
@@ -180,39 +188,54 @@ class _DirectorioPersonasPageState extends State<DirectorioPersonasPage>
     }
 
     if (_filtradas.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
+      return RefreshIndicator(
+        color: AppColors.verde,
+        onRefresh: _refrescar,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const [
+            SizedBox(height: 120),
             Icon(
               Icons.people_outline,
               color: Colors.white24,
               size: 56,
             ),
-            const SizedBox(height: 16),
-            const Text(
-              'No se encontraron estudiantes',
-              style: TextStyle(color: Colors.white54, fontSize: 16),
+            SizedBox(height: 16),
+            Center(
+              child: Text(
+                'No se encontraron estudiantes',
+                style: TextStyle(color: Colors.white54, fontSize: 16),
+              ),
             ),
-            const SizedBox(height: 8),
-            const Text(
-              'Intenta con otro nombre o documento',
-              style: TextStyle(color: Colors.white30, fontSize: 13),
+            SizedBox(height: 8),
+            Center(
+              child: Text(
+                'Intenta con otro nombre, documento o correo',
+                style: TextStyle(color: Colors.white30, fontSize: 13),
+              ),
             ),
           ],
         ),
       );
     }
 
-    return ListView.builder(
-      itemCount: _filtradas.length,
-      itemBuilder: (_, i) => _TarjetaPersona(persona: _filtradas[i]),
+    return RefreshIndicator(
+      color: AppColors.verde,
+      onRefresh: _refrescar,
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        itemCount: _filtradas.length,
+        itemBuilder: (_, i) => _TarjetaPersona(persona: _filtradas[i]),
+      ),
     );
   }
 }
 
-// ── Header ────────────────────────────────────────────────────────────────────
 class _Header extends StatelessWidget {
+  final Future<void> Function() onRefresh;
+
+  const _Header({required this.onRefresh});
+
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -226,8 +249,7 @@ class _Header extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.07),
               borderRadius: BorderRadius.circular(12),
-              border:
-                  Border.all(color: Colors.white.withOpacity(0.1)),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: const Icon(
               Icons.arrow_back_rounded,
@@ -251,7 +273,7 @@ class _Header extends StatelessWidget {
                 ),
               ),
               Text(
-                'Directorio de estudiantes',
+                'Directorio Usuarios',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 18,
@@ -261,17 +283,37 @@ class _Header extends StatelessWidget {
             ],
           ),
         ),
+        InkWell(
+          onTap: () async => onRefresh(),
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.07),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
+            ),
+            child: const Icon(
+              Icons.refresh_rounded,
+              color: Colors.white70,
+              size: 18,
+            ),
+          ),
+        ),
       ],
     );
   }
 }
 
-// ── Buscador ──────────────────────────────────────────────────────────────────
 class _Buscador extends StatelessWidget {
   final TextEditingController ctrl;
   final VoidCallback onClear;
 
-  const _Buscador({required this.ctrl, required this.onClear});
+  const _Buscador({
+    required this.ctrl,
+    required this.onClear,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -284,21 +326,29 @@ class _Buscador extends StatelessWidget {
           style: const TextStyle(color: Colors.white, fontSize: 14),
           cursorColor: AppColors.verde,
           decoration: InputDecoration(
-            hintText: 'Buscar por nombre, documento o correo...',
+            hintText: 'Buscar por nombre, documento, correo o celular...',
             hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
-            prefixIcon: const Icon(Icons.search_rounded,
-                color: Colors.white38, size: 20),
+            prefixIcon: const Icon(
+              Icons.search_rounded,
+              color: Colors.white38,
+              size: 20,
+            ),
             suffixIcon: ctrl.text.isNotEmpty
                 ? IconButton(
-                    icon: const Icon(Icons.clear_rounded,
-                        color: Colors.white38, size: 18),
+                    icon: const Icon(
+                      Icons.clear_rounded,
+                      color: Colors.white38,
+                      size: 18,
+                    ),
                     onPressed: onClear,
                   )
                 : null,
             filled: true,
             fillColor: Colors.white.withOpacity(0.07),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 18,
+              vertical: 16,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
@@ -307,10 +357,9 @@ class _Buscador extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
             ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide:
-                  const BorderSide(color: AppColors.verde, width: 1.5),
+            focusedBorder: const OutlineInputBorder(
+              borderRadius: BorderRadius.all(Radius.circular(16)),
+              borderSide: BorderSide(color: AppColors.verde, width: 1.5),
             ),
           ),
         ),
@@ -319,9 +368,9 @@ class _Buscador extends StatelessWidget {
   }
 }
 
-// ── Tarjeta persona ───────────────────────────────────────────────────────────
 class _TarjetaPersona extends StatefulWidget {
   final Map<String, dynamic> persona;
+
   const _TarjetaPersona({required this.persona});
 
   @override
@@ -334,15 +383,31 @@ class _TarjetaPersonaState extends State<_TarjetaPersona> {
   @override
   Widget build(BuildContext context) {
     final p = widget.persona;
-    final nombre = (p['nombre'] ?? 'Sin nombre').toString();
-    final correo = (p['correo'] ?? '').toString();
-    final celular = (p['celular'] ?? 'No registrado').toString();
-    final doc = (p['num_documento'] ?? 'No registrado').toString();
-    final tipoDoc = p['tbl_tipo_documento']?['nombre']?.toString() ?? '';
-    final inicial =
-        nombre.isNotEmpty ? nombre[0].toUpperCase() : '?';
 
-    // Color de avatar basado en inicial
+    final nombre = (p['nombre'] ?? 'Sin nombre').toString();
+    final correo = (p['correo'] ?? 'Sin correo').toString();
+    final celular = (p['celular'] ?? 'No registrado').toString();
+
+    final doc = (p['numDocumento'] ??
+            p['num_documento'] ??
+            'No registrado')
+        .toString();
+
+    final tipoDoc = (p['tipoDocumento'] ??
+            p['tbl_tipo_documento']?['nombre'] ??
+            '')
+        .toString();
+
+    final idEstado = int.tryParse(
+          (p['idEstado'] ?? p['id_estado'] ?? '').toString(),
+        ) ??
+        -1;
+
+    final estadoTexto = _estadoTexto(idEstado);
+    final estadoColor = _estadoColor(idEstado);
+
+    final inicial = nombre.isNotEmpty ? nombre[0].toUpperCase() : '?';
+
     final colores = [
       const Color(0xFF0A8F4D),
       const Color(0xFF3A7BD5),
@@ -350,6 +415,7 @@ class _TarjetaPersonaState extends State<_TarjetaPersona> {
       const Color(0xFFE07B2A),
       const Color(0xFF0891B2),
     ];
+
     final colorAvatar = colores[inicial.codeUnitAt(0) % colores.length];
 
     return GestureDetector(
@@ -376,10 +442,8 @@ class _TarjetaPersonaState extends State<_TarjetaPersona> {
               ),
               child: Column(
                 children: [
-                  // ── Fila principal ──────────────────────────────
                   Row(
                     children: [
-                      // Avatar
                       Container(
                         width: 46,
                         height: 46,
@@ -387,8 +451,9 @@ class _TarjetaPersonaState extends State<_TarjetaPersona> {
                           color: colorAvatar.withOpacity(0.2),
                           shape: BoxShape.circle,
                           border: Border.all(
-                              color: colorAvatar.withOpacity(0.5),
-                              width: 1.5),
+                            color: colorAvatar.withOpacity(0.5),
+                            width: 1.5,
+                          ),
                         ),
                         child: Center(
                           child: Text(
@@ -402,8 +467,6 @@ class _TarjetaPersonaState extends State<_TarjetaPersona> {
                         ),
                       ),
                       const SizedBox(width: 14),
-
-                      // Nombre + correo
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -428,12 +491,33 @@ class _TarjetaPersonaState extends State<_TarjetaPersona> {
                           ],
                         ),
                       ),
-
-                      // Expandir
+                      if (estadoTexto.isNotEmpty)
+                        Container(
+                          margin: const EdgeInsets.only(right: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: estadoColor.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: estadoColor.withOpacity(0.35),
+                            ),
+                          ),
+                          child: Text(
+                            estadoTexto,
+                            style: TextStyle(
+                              color: estadoColor,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
                       AnimatedRotation(
                         turns: _expandida ? 0.5 : 0,
                         duration: const Duration(milliseconds: 250),
-                        child: Icon(
+                        child: const Icon(
                           Icons.keyboard_arrow_down_rounded,
                           color: Colors.white38,
                           size: 22,
@@ -441,8 +525,6 @@ class _TarjetaPersonaState extends State<_TarjetaPersona> {
                       ),
                     ],
                   ),
-
-                  // ── Detalle expandido ──────────────────────────
                   AnimatedSize(
                     duration: const Duration(milliseconds: 250),
                     curve: Curves.easeOut,
@@ -451,8 +533,9 @@ class _TarjetaPersonaState extends State<_TarjetaPersona> {
                             children: [
                               const SizedBox(height: 14),
                               Divider(
-                                  color: Colors.white.withOpacity(0.08),
-                                  height: 1),
+                                color: Colors.white.withOpacity(0.08),
+                                height: 1,
+                              ),
                               const SizedBox(height: 14),
                               _FilaDetalle(
                                 icono: Icons.phone_outlined,
@@ -462,8 +545,15 @@ class _TarjetaPersonaState extends State<_TarjetaPersona> {
                               const SizedBox(height: 10),
                               _FilaDetalle(
                                 icono: Icons.badge_outlined,
-                                label: tipoDoc.isNotEmpty ? tipoDoc : 'Documento',
+                                label:
+                                    tipoDoc.isNotEmpty ? tipoDoc : 'Documento',
                                 valor: doc,
+                              ),
+                              const SizedBox(height: 10),
+                              _FilaDetalle(
+                                icono: Icons.email_outlined,
+                                label: 'Correo',
+                                valor: correo,
                               ),
                             ],
                           )
@@ -477,9 +567,30 @@ class _TarjetaPersonaState extends State<_TarjetaPersona> {
       ),
     );
   }
+
+  String _estadoTexto(int idEstado) {
+    switch (idEstado) {
+      case 4:
+        return 'Activo';
+      case 5:
+        return 'Inactivo';
+      default:
+        return '';
+    }
+  }
+
+  Color _estadoColor(int idEstado) {
+    switch (idEstado) {
+      case 4:
+        return const Color(0xFF0A8F4D);
+      case 5:
+        return const Color(0xFFDC2626);
+      default:
+        return Colors.white54;
+    }
+  }
 }
 
-// ── Fila de detalle ───────────────────────────────────────────────────────────
 class _FilaDetalle extends StatelessWidget {
   final IconData icono;
   final String label;
