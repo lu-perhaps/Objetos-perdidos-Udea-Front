@@ -142,14 +142,31 @@ class _RegistroObjetoPageState extends State<RegistroObjetoPage>
 
   Future<String?> _subirImagen(int idObjeto) async {
     if (_imagenSeleccionada == null || _imagenBytes == null) return null;
+
     try {
-      final extension = _imagenSeleccionada!.path.split('.').last;
-      final ruta = 'objetos/$idObjeto.$extension';
+      final nombreArchivo = _imagenSeleccionada!.name.toLowerCase();
+
+      String extension = 'jpg';
+
+      if (nombreArchivo.endsWith('.png')) {
+        extension = 'png';
+      } else if (nombreArchivo.endsWith('.webp')) {
+        extension = 'webp';
+      } else if (nombreArchivo.endsWith('.jpeg')) {
+        extension = 'jpeg';
+      } else if (nombreArchivo.endsWith('.jpg')) {
+        extension = 'jpg';
+      }
+
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final ruta = 'objetos/$idObjeto-$timestamp.$extension';
+
       await ObjetoRepository.subirImagenBytes(
         rutaStorage: ruta,
         bytes: _imagenBytes!,
         nombreArchivo: _imagenSeleccionada!.name,
       );
+
       return ObjetoRepository.obtenerUrlPublica(ruta);
     } catch (e) {
       debugPrint('ERROR subiendo imagen: $e');
