@@ -149,15 +149,34 @@ class ObjetoRepository {
         .upload(rutaStorage, archivo);
   }
   // Actualiza la fotografía de un objeto ya guardado
-  static Future<void> actualizarFotografia({
-    required int idObjeto,
-    required String url,
-  }) async {
-    await supabase
-        .from('tbl_objeto')
-        .update({'fotografia': url})
-        .eq('id', idObjeto);
+  static Future<bool> actualizarFotografia({
+      required int idObjeto,
+      required String url,
+    }) async {
+      try {
+        final response = await http.put(
+          Uri.parse('${ApiConfig.baseUrl}/api/objetos/$idObjeto/fotografia'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'url': url,
+          }),
+        );
+
+        if (response.statusCode != 200) {
+          debugPrint(
+            'ERROR actualizarFotografia API: ${response.statusCode} ${response.body}',
+          );
+          return false;
+        }
+
+        return true;
+      } catch (e) {
+        debugPrint('ERROR actualizarFotografia API: $e');
+        return false;
+      }
+      
   }
+
   static Future<void> subirImagenBytes({
     required String rutaStorage,
     required Uint8List bytes,
