@@ -228,5 +228,24 @@ class ObjetoRepository {
       return false;
     }
   }
+  // PARA OCULTAR PUBLICACIONES
+  static Future<bool> ocultarPublicacion(int idObjeto) async {
+    try {
+      final response = await http.put(
+        Uri.parse('${ApiConfig.baseUrl}/api/objetos/$idObjeto/ocultar-publicacion'),
+      );
 
+      if (response.statusCode != 200 && response.statusCode != 204) {
+        debugPrint(
+          'ERROR ocultarPublicacion API: ${response.statusCode} ${response.body}',
+        );
+        return false;
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint('ERROR ocultarPublicacion API: $e');
+      return false;
+    }
+  }
 }

@@ -1,8 +1,12 @@
 import 'dart:convert';
 import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+
 import '../Constants/api_config.dart';
+import '../Repositories/objeto_repository.dart';
+import '../services/auth_service.dart';
 import 'objeto_detail_page.dart';
 
 class ObjetosListPage extends StatefulWidget {
@@ -15,12 +19,21 @@ class ObjetosListPage extends StatefulWidget {
 class _ObjetosListPageState extends State<ObjetosListPage> {
   List<Map<String, dynamic>> objetos = [];
   bool cargando = true;
+  bool _esAdmin = false;
   String busqueda = '';
 
   @override
   void initState() {
     super.initState();
+    _verificarRol();
     cargarObjetos();
+  }
+
+  Future<void> _verificarRol() async {
+    final admin = await AuthService.esAdmin();
+    if (mounted) {
+      setState(() => _esAdmin = admin);
+    }
   }
 
   Future<void> cargarObjetos() async {
@@ -34,6 +47,8 @@ class _ObjetosListPageState extends State<ObjetosListPage> {
       }
 
       final List<dynamic> data = jsonDecode(response.body);
+
+      if (!mounted) return;
 
       setState(() {
         objetos = List<Map<String, dynamic>>.from(data);
@@ -54,6 +69,60 @@ class _ObjetosListPageState extends State<ObjetosListPage> {
     }
   }
 
+  Future<void> _ocultarPublicacion(Map<String, dynamic> objeto) async {
+    final idObjeto = int.tryParse(
+      (objeto['id'] ?? objeto['id_objeto'] ?? '').toString(),
+    );
+
+    if (idObjeto == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('ID de objeto inválido')),
+      );
+      return;
+    }
+
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Ocultar publicación'),
+        content: const Text(
+          '¿Seguro que quieres ocultar esta publicación? El objeto seguirá en el inventario, pero ya no aparecerá disponible para reclamos.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Ocultar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar != true) return;
+
+    final ok = await ObjetoRepository.ocultarPublicacion(idObjeto);
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          ok
+              ? 'Publicación ocultada correctamente'
+              : 'No se pudo ocultar la publicación',
+        ),
+      ),
+    );
+
+    if (ok) {
+      setState(() => cargando = true);
+      await cargarObjetos();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final filtrados = objetos.where((obj) {
@@ -68,6 +137,7 @@ class _ObjetosListPageState extends State<ObjetosListPage> {
         obj['descripcion_general'] ??
         ''
       ).toString().toLowerCase();
+
       final texto = '$nombre $categoria $descripcion';
       return texto.contains(busqueda.toLowerCase());
     }).toList();
@@ -112,19 +182,15 @@ class _ObjetosListPageState extends State<ObjetosListPage> {
                         ),
                       ),
                       IconButton(
-                        onPressed: () {
-                          setState(() {
-                            cargando = true;
-                          });
-                          cargarObjetos();
+                        onPressed: () async {
+                          setState(() => cargando = true);
+                          await cargarObjetos();
                         },
                         icon: const Icon(Icons.refresh, color: Colors.white),
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 20),
-
                   TextField(
                     onChanged: (value) {
                       setState(() {
@@ -143,9 +209,7 @@ class _ObjetosListPageState extends State<ObjetosListPage> {
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 20),
-
                   Text(
                     'Resultados (${filtrados.length} encontrados)',
                     style: const TextStyle(
@@ -154,9 +218,7 @@ class _ObjetosListPageState extends State<ObjetosListPage> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-
                   const SizedBox(height: 16),
-
                   Expanded(
                     child: cargando
                         ? const Center(
@@ -178,23 +240,29 @@ class _ObjetosListPageState extends State<ObjetosListPage> {
                                 itemCount: filtrados.length,
                                 itemBuilder: (context, index) {
                                   final objeto = filtrados[index];
-                                  final nombre = (objeto['nombre'] ?? 'Sin nombre')
-                                      .toString();
+
+                                  final nombre =
+                                      (objeto['nombre'] ?? 'Sin nombre')
+                                          .toString();
+
                                   final descripcion = (
                                     objeto['descripcionGeneral'] ??
                                     objeto['descripcion_general'] ??
                                     'Sin descripción'
                                   ).toString();
+
                                   final categoria = (
                                     objeto['categoria'] ??
                                     objeto['tbl_categoria']?['nombre'] ??
                                     'Sin categoría'
                                   ).toString();
+
                                   final fecha = (
                                     objeto['fechaHallazgo'] ??
                                     objeto['fecha_hallazgo'] ??
                                     ''
                                   ).toString();
+
                                   final lugarActual = (
                                     objeto['lugarActual'] ??
                                     objeto['lugar_actual'] ??
@@ -203,13 +271,21 @@ class _ObjetosListPageState extends State<ObjetosListPage> {
 
                                   return GestureDetector(
                                     onTap: () {
+                                      final idObjeto = int.tryParse(
+                                        (objeto['id'] ??
+                                                objeto['id_objeto'] ??
+                                                '')
+                                            .toString(),
+                                      );
+
+                                      if (idObjeto == null) return;
+
                                       Navigator.push(
                                         context,
                                         MaterialPageRoute(
-                                          builder: (_) =>
-                                              ObjetoDetailPage(
-                                                idObjeto: objeto['id'] ?? objeto['id_objeto'],
-                                              ),
+                                          builder: (_) => ObjetoDetailPage(
+                                            idObjeto: idObjeto,
+                                          ),
                                         ),
                                       );
                                     },
@@ -270,6 +346,29 @@ class _ObjetosListPageState extends State<ObjetosListPage> {
                                               fontSize: 15,
                                             ),
                                           ),
+                                          if (_esAdmin) ...[
+                                            const SizedBox(height: 14),
+                                            SizedBox(
+                                              width: double.infinity,
+                                              child: OutlinedButton.icon(
+                                                onPressed: () =>
+                                                    _ocultarPublicacion(objeto),
+                                                icon: const Icon(
+                                                  Icons.visibility_off_outlined,
+                                                ),
+                                                label: const Text(
+                                                  'Ocultar publicación',
+                                                ),
+                                                style: OutlinedButton.styleFrom(
+                                                  foregroundColor:
+                                                      Colors.orange,
+                                                  side: const BorderSide(
+                                                    color: Colors.orange,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
                                         ],
                                       ),
                                     ),

@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+
 import '../services/auth_service.dart';
 import '../Repositories/objeto_repository.dart';
 import 'solicitud_reclamo_page.dart';
@@ -28,12 +29,16 @@ class _ObjetoDetailPageState extends State<ObjetoDetailPage> {
 
   Future<void> _cargarObjeto() async {
     setState(() => _cargandoObjeto = true);
+
     final data = await ObjetoRepository.obtenerObjetoPorId(widget.idObjeto);
+
     if (!mounted) return;
+
     setState(() {
       _objeto = data;
       _cargandoObjeto = false;
     });
+
     if (data == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Error cargando detalle del objeto')),
@@ -46,6 +51,58 @@ class _ObjetoDetailPageState extends State<ObjetoDetailPage> {
     if (mounted) setState(() => _esAdmin = admin);
   }
 
+  bool _puedeOcultarPublicacion(Map<String, dynamic> objeto) {
+    final idEstado = int.tryParse(
+      (objeto['idEstado'] ?? objeto['id_estado'] ?? '').toString(),
+    );
+
+    final estado = (objeto['estado'] ?? '').toString().toLowerCase();
+
+    return idEstado == 3 || estado == 'disponible';
+  }
+
+  Future<void> _ocultarPublicacion() async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Ocultar publicación'),
+        content: const Text(
+          '¿Seguro que quieres ocultar esta publicación? El objeto seguirá en inventario, pero ya no aparecerá disponible para reclamos.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Ocultar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar != true) return;
+
+    final ok = await ObjetoRepository.ocultarPublicacion(widget.idObjeto);
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          ok
+              ? 'Publicación ocultada correctamente'
+              : 'No se pudo ocultar la publicación',
+        ),
+      ),
+    );
+
+    if (ok) {
+      await _cargarObjeto();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_cargandoObjeto) {
@@ -55,40 +112,44 @@ class _ObjetoDetailPageState extends State<ObjetoDetailPage> {
     }
 
     final objeto = _objeto ?? {};
-    final categoria = (
-      objeto['categoria'] ??
-      objeto['tbl_categoria']?['nombre'] ??
-      'Objeto encontrado'
-    ).toString();
-    final descripcionGeneral = (
-      objeto['descripcionGeneral'] ??
-      objeto['descripcion_general'] ??
-      'Sin descripción'
-    ).toString();
-    final descripcionDetallada = (
-      objeto['descripcionDetallada'] ??
-      objeto['descripcion_detallada'] ??
-      ''
-    ).toString();
-    final fechaHallazgo = (
-      objeto['fechaHallazgo'] ??
-      objeto['fecha_hallazgo'] ??
-      ''
-    ).toString();
-    final lugarEncontrado = (
-      objeto['lugarEncontrado'] ??
-      objeto['lugar_encontrado'] ??
-      objeto['lugarEncontradoNombre'] ??
-      'No registrado'
-    ).toString();
-    final lugarActual = (
-      objeto['lugarActual'] ??
-      objeto['lugar_actual'] ??
-      objeto['lugarActualNombre'] ??
-      'No registrado'
-    ).toString();
-    final fotoUrl = (objeto['fotografia'] ?? objeto['fotografiaUrl'] ?? '').toString();
+
+    final categoria = (objeto['categoria'] ??
+            objeto['tbl_categoria']?['nombre'] ??
+            'Objeto encontrado')
+        .toString();
+
+    final descripcionGeneral = (objeto['descripcionGeneral'] ??
+            objeto['descripcion_general'] ??
+            'Sin descripción')
+        .toString();
+
+    final descripcionDetallada = (objeto['descripcionDetallada'] ??
+            objeto['descripcion_detallada'] ??
+            '')
+        .toString();
+
+    final fechaHallazgo =
+        (objeto['fechaHallazgo'] ?? objeto['fecha_hallazgo'] ?? '')
+            .toString();
+
+    final lugarEncontrado = (objeto['lugarEncontrado'] ??
+            objeto['lugar_encontrado'] ??
+            objeto['lugarEncontradoNombre'] ??
+            'No registrado')
+        .toString();
+
+    final lugarActual = (objeto['lugarActual'] ??
+            objeto['lugar_actual'] ??
+            objeto['lugarActualNombre'] ??
+            'No registrado')
+        .toString();
+
+    final fotoUrl =
+        (objeto['fotografia'] ?? objeto['fotografiaUrl'] ?? '').toString();
+
     final nombre = (objeto['nombre'] ?? 'Sin nombre').toString();
+
+    final estado = (objeto['estado'] ?? '').toString();
 
     final size = MediaQuery.of(context).size;
     final isWide = size.width > 600;
@@ -97,7 +158,6 @@ class _ObjetoDetailPageState extends State<ObjetoDetailPage> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // ── Fondo ────────────────────────────────────────────────
           Image.asset('assets/udea_bg.jpeg', fit: BoxFit.cover),
           Container(
             decoration: const BoxDecoration(
@@ -117,8 +177,6 @@ class _ObjetoDetailPageState extends State<ObjetoDetailPage> {
             filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
             child: const SizedBox.expand(),
           ),
-
-          // ── Contenido ────────────────────────────────────────────
           SafeArea(
             child: SingleChildScrollView(
               padding: EdgeInsets.symmetric(
@@ -128,42 +186,72 @@ class _ObjetoDetailPageState extends State<ObjetoDetailPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ── Header ──────────────────────────────────────
                   Row(
                     children: [
                       _BotonVolver(onTap: () => Navigator.pop(context)),
                       const SizedBox(width: 12),
-                      const Expanded(child: HeaderUdea(titulo: 'Detalle del objeto')),
+                      const Expanded(
+                        child: HeaderUdea(titulo: 'Detalle del objeto'),
+                      ),
                     ],
                   ),
 
                   const SizedBox(height: 16),
 
-                  // Badge categoría
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0A8F4D).withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: const Color(0xFF0A8F4D).withOpacity(0.4),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0A8F4D).withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: const Color(0xFF0A8F4D).withOpacity(0.4),
+                          ),
+                        ),
+                        child: Text(
+                          categoria,
+                          style: const TextStyle(
+                            color: Color(0xFF0A8F4D),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
                       ),
-                    ),
-                    child: Text(
-                      categoria,
-                      style: const TextStyle(
-                        color: Color(0xFF0A8F4D),
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
+                      if (_esAdmin && estado.isNotEmpty) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: Colors.orange.withOpacity(0.4),
+                            ),
+                          ),
+                          child: Text(
+                            estado,
+                            style: const TextStyle(
+                              color: Colors.orange,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
 
                   const SizedBox(height: 24),
 
-                  // ── Imagen ──────────────────────────────────────
                   ClipRRect(
                     borderRadius: BorderRadius.circular(20),
                     child: Container(
@@ -189,7 +277,6 @@ class _ObjetoDetailPageState extends State<ObjetoDetailPage> {
 
                   const SizedBox(height: 24),
 
-                  // ── Nombre ──────────────────────────────────────
                   Text(
                     nombre,
                     style: const TextStyle(
@@ -202,7 +289,6 @@ class _ObjetoDetailPageState extends State<ObjetoDetailPage> {
 
                   const SizedBox(height: 20),
 
-                  // ── Tarjeta info general ─────────────────────────
                   _TarjetaInfo(
                     titulo: 'INFORMACIÓN GENERAL',
                     icono: Icons.info_outline_rounded,
@@ -231,12 +317,13 @@ class _ObjetoDetailPageState extends State<ObjetoDetailPage> {
                       _FilaInfo(
                         icono: Icons.calendar_today_outlined,
                         label: 'Fecha del hallazgo',
-                        valor: fechaHallazgo,
+                        valor: fechaHallazgo.isEmpty
+                            ? 'No registrada'
+                            : fechaHallazgo,
                       ),
                     ],
                   ),
 
-                  // ── Info privada (solo admin) ─────────────────────
                   if (_esAdmin) ...[
                     const SizedBox(height: 16),
                     _TarjetaInfo(
@@ -255,7 +342,26 @@ class _ObjetoDetailPageState extends State<ObjetoDetailPage> {
                     ),
                   ],
 
-                  // ── Sección reclamar (usuario normal) ─────────────
+                  if (_esAdmin && _puedeOcultarPublicacion(objeto)) ...[
+                    const SizedBox(height: 18),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _ocultarPublicacion,
+                        icon: const Icon(Icons.visibility_off_outlined),
+                        label: const Text('OCULTAR PUBLICACIÓN'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.orange,
+                          side: const BorderSide(color: Colors.orange),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+
                   if (!_esAdmin) ...[
                     const SizedBox(height: 28),
                     const Text(
@@ -278,8 +384,7 @@ class _ObjetoDetailPageState extends State<ObjetoDetailPage> {
                             color: Colors.white.withOpacity(0.06),
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
-                              color:
-                                  const Color(0xFF0A8F4D).withOpacity(0.25),
+                              color: const Color(0xFF0A8F4D).withOpacity(0.25),
                               width: 1.5,
                             ),
                           ),
@@ -302,7 +407,8 @@ class _ObjetoDetailPageState extends State<ObjetoDetailPage> {
                                     context,
                                     MaterialPageRoute(
                                       builder: (_) => SolicitudReclamoPage(
-                                          objeto: objeto),
+                                        objeto: objeto,
+                                      ),
                                     ),
                                   ),
                                   icon: const Icon(
@@ -322,7 +428,8 @@ class _ObjetoDetailPageState extends State<ObjetoDetailPage> {
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: const Color(0xFF0A8F4D),
                                     padding: const EdgeInsets.symmetric(
-                                        vertical: 16),
+                                      vertical: 16,
+                                    ),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(16),
                                     ),
@@ -339,12 +446,13 @@ class _ObjetoDetailPageState extends State<ObjetoDetailPage> {
 
                   const SizedBox(height: 32),
 
-                  // ── Footer ───────────────────────────────────────
                   Center(
                     child: Text(
                       'UdeA 2024 · Objetos Perdidos',
                       style: TextStyle(
-                          color: Colors.white.withOpacity(0.2), fontSize: 11),
+                        color: Colors.white.withOpacity(0.2),
+                        fontSize: 11,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -358,7 +466,6 @@ class _ObjetoDetailPageState extends State<ObjetoDetailPage> {
   }
 }
 
-// ── Tarjeta de información ────────────────────────────────────────────────────
 class _TarjetaInfo extends StatelessWidget {
   final String titulo;
   final IconData icono;
@@ -413,7 +520,6 @@ class _TarjetaInfo extends StatelessWidget {
   }
 }
 
-// ── Fila de info ─────────────────────────────────────────────────────────────
 class _FilaInfo extends StatelessWidget {
   final IconData icono;
   final String label;
@@ -465,7 +571,6 @@ class _FilaInfo extends StatelessWidget {
   }
 }
 
-// ── Sin imagen ────────────────────────────────────────────────────────────────
 class _SinImagen extends StatelessWidget {
   const _SinImagen();
 
@@ -474,22 +579,27 @@ class _SinImagen extends StatelessWidget {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(Icons.image_outlined,
-            size: 48, color: Colors.white.withOpacity(0.25)),
+        Icon(
+          Icons.image_outlined,
+          size: 48,
+          color: Colors.white.withOpacity(0.25),
+        ),
         const SizedBox(height: 8),
         Text(
           'Sin fotografía',
           style: TextStyle(
-              color: Colors.white.withOpacity(0.3), fontSize: 13),
+            color: Colors.white.withOpacity(0.3),
+            fontSize: 13,
+          ),
         ),
       ],
     );
   }
 }
 
-// ── Botón volver ──────────────────────────────────────────────────────────────
 class _BotonVolver extends StatelessWidget {
   final VoidCallback onTap;
+
   const _BotonVolver({required this.onTap});
 
   @override

@@ -152,15 +152,11 @@ class _DirectorioPersonasPageState extends State<DirectorioPersonasPage>
                       const SizedBox(height: 10),
                       Align(
                         alignment: Alignment.centerRight,
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 300),
-                          child: Text(
-                            '${_filtradas.length} estudiante(s)',
-                            key: ValueKey(_filtradas.length),
-                            style: const TextStyle(
-                              color: Colors.white38,
-                              fontSize: 12,
-                            ),
+                        child: Text(
+                          'Registros encontrados: ${_filtradas.length}',
+                          style: const TextStyle(
+                            color: Colors.white38,
+                            fontSize: 12,
                           ),
                         ),
                       ),
