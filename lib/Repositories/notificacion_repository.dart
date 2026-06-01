@@ -46,4 +46,34 @@ class NotificacionRepository {
 
     return notificaciones.where((n) => n['leida'] == false).length;
   }
+
+  static Future<bool> eliminarNotificacion(int idNotificacion) async {
+    try {
+      final response = await http.delete(
+        Uri.parse(
+          '${ApiConfig.baseUrl}/api/notificaciones/$idNotificacion',
+        ),
+      );
+
+      return response.statusCode == 200 || response.statusCode == 204;
+    } catch (e) {
+      debugPrint('ERROR eliminarNotificacion API: $e');
+      return false;
+    }
+  }
+
+  static Future<bool> eliminarTodas(String correo) async {
+    try {
+      final response = await http.delete(
+        Uri.parse(
+          '${ApiConfig.baseUrl}/api/notificaciones/persona/${correo.toLowerCase().trim()}',
+        ),
+      );
+
+      return response.statusCode == 200 || response.statusCode == 204;
+    } catch (e) {
+      debugPrint('ERROR eliminarTodas API: $e');
+      return false;
+    }
+  }
 }

@@ -39,6 +39,25 @@ class _ReportesAdminPageState extends State<ReportesAdminPage>
     }
   }
 
+  void _actualizarReporteLocal(int idReporte) {
+    if (!mounted) return;
+
+    final index = _reportes.indexWhere((r) {
+      final rawId = r['id'];
+      return rawId is int ? rawId == idReporte : int.tryParse(rawId?.toString() ?? '') == idReporte;
+    });
+
+    if (index < 0) return;
+
+    setState(() {
+      final reporte = _reportes[index];
+      reporte['id_estado'] = 7;
+      reporte['idEstado'] = 7;
+      reporte['estado'] = 7;
+      _reportes[index] = reporte;
+    });
+  }
+
   void _iniciarAnimaciones() {
     _animCtrl = AnimationController(
       vsync: this,
@@ -78,12 +97,14 @@ class _ReportesAdminPageState extends State<ReportesAdminPage>
   String _estadoTexto(int estado) {
     if (estado == Estados.reportePendiente) return 'Pendiente';
     if (estado == Estados.reporteResuelto) return 'Resuelto';
+    if (estado == 8) return 'Pendiente (dato antiguo)';
     return 'Estado desconocido';
   }
 
   Color _estadoColor(int estado) {
     if (estado == Estados.reportePendiente) return Colors.orange;
     if (estado == Estados.reporteResuelto) return Colors.green;
+    if (estado == 8) return Colors.orange;
     return Colors.grey;
   }
 
@@ -330,16 +351,19 @@ class _ReportesAdminPageState extends State<ReportesAdminPage>
 
     if (!mounted) return;
 
+    final messenger = ScaffoldMessenger.of(context);
+
     if (exito) {
+      _actualizarReporteLocal(reporte['id'] as int);
       await _cargarReportes();
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         const SnackBar(
           content: Text('Coincidencia registrada y usuario notificado'),
           backgroundColor: AppColors.verde,
         ),
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         const SnackBar(
           content: Text('Error al procesar la coincidencia'),
           backgroundColor: Colors.red,
@@ -419,9 +443,10 @@ class _ReportesAdminPageState extends State<ReportesAdminPage>
                                 itemCount: _reportes.length,
                                 itemBuilder: (_, i) {
                                   final r = _reportes[i];
-                                  final estado = r['idEstado'] as int;
-                                  final pendiente =
-                                      estado == Estados.reportePendiente;
+                                  // Support both idEstado and id_estado fields
+                                  final rEstadoRaw = r['idEstado'] ?? r['id_estado'] ?? r['estado'];
+                                  final estado = int.tryParse(rEstadoRaw?.toString() ?? '') ?? -1;
+                                  final pendiente = estado == Estados.reportePendiente || estado == 8;
 
                                   return FadeTransition(
                                     opacity: _fadeAnims[i],

@@ -18,7 +18,8 @@ class HomeUsuarioPage extends StatefulWidget {
 
 class _HomeUsuarioPageState extends State<HomeUsuarioPage>
     with SingleTickerProviderStateMixin {
-  int _noLeidas = 0;
+  int _notificacionesNoLeidas = 0;
+  bool _cargandoNotificaciones = false;
   String _nombre = 'Usuario';
 
   late AnimationController _animCtrl;
@@ -60,7 +61,7 @@ class _HomeUsuarioPageState extends State<HomeUsuarioPage>
     });
 
     _animCtrl.forward();
-    _cargarContador();
+    _cargarContadorNotificaciones();
     _cargarNombre();
   }
 
@@ -70,17 +71,38 @@ class _HomeUsuarioPageState extends State<HomeUsuarioPage>
     super.dispose();
   }
 
-  Future<void> _cargarContador() async {
+  Future<void> _cargarContadorNotificaciones() async {
     final user = supabase.auth.currentUser;
 
-    if (user == null || user.email == null) return;
+    if (mounted) {
+      setState(() {
+        _cargandoNotificaciones = true;
+        _notificacionesNoLeidas = 0;
+      });
+    }
+
+    if (user == null || user.email == null) {
+      if (mounted) {
+        setState(() {
+          _notificacionesNoLeidas = 0;
+          _cargandoNotificaciones = false;
+        });
+      }
+      return;
+    }
 
     final count = await NotificacionRepository.contarNoLeidas(
       correo: user.email!.toLowerCase().trim(),
     );
 
-    if (mounted) setState(() => _noLeidas = count);
-}
+    if (mounted) {
+      setState(() {
+        _notificacionesNoLeidas = count;
+        _cargandoNotificaciones = false;
+      });
+    }
+  }
+
   Future<void> _cargarNombre() async {
     final persona = await PersonaRepository.obtenerPersonaActual();
 
@@ -98,6 +120,8 @@ class _HomeUsuarioPageState extends State<HomeUsuarioPage>
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
+    if (_cargandoNotificaciones) {}
+
     final isWide = size.width > 600;
 
     return Scaffold(
@@ -137,7 +161,7 @@ class _HomeUsuarioPageState extends State<HomeUsuarioPage>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _TopBar(
-                      noLeidas: _noLeidas,
+                      noLeidas: _notificacionesNoLeidas,
                       onNotificaciones: () async {
                         await Navigator.push(
                           context,
@@ -145,7 +169,7 @@ class _HomeUsuarioPageState extends State<HomeUsuarioPage>
                             builder: (_) => const NotificacionesPage(),
                           ),
                         );
-                        _cargarContador();
+                        _cargarContadorNotificaciones();
                       },
                       onCerrarSesion: _cerrarSesion,
                     ),
@@ -312,7 +336,7 @@ class _TopBar extends StatelessWidget {
                   ),
                   child: Center(
                     child: Text(
-                      '$noLeidas',
+                      noLeidas > 99 ? '99+' : '$noLeidas',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 9,
