@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+
 import '../constants/estados.dart';
 import '../Repositories/solicitud_repository.dart';
 import '../main.dart';
@@ -76,6 +77,13 @@ class _MisSolicitudesPageState extends State<MisSolicitudesPage>
     }
   }
 
+  Future<void> _refrescar() async {
+    if (mounted) {
+      setState(() => _cargando = true);
+    }
+    await _cargarSolicitudes();
+  }
+
   String _estadoTexto(int estado) {
     if (estado == Estados.solicitudPendiente) return 'Pendiente';
     if (estado == Estados.solicitudAprobada) return 'Aprobada';
@@ -138,7 +146,6 @@ class _MisSolicitudesPageState extends State<MisSolicitudesPage>
             'assets/udea_bg.jpeg',
             fit: BoxFit.cover,
           ),
-
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
@@ -151,12 +158,10 @@ class _MisSolicitudesPageState extends State<MisSolicitudesPage>
               ),
             ),
           ),
-
           BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
             child: const SizedBox.expand(),
           ),
-
           SafeArea(
             child: FadeTransition(
               opacity: _fadeAnim,
@@ -170,13 +175,12 @@ class _MisSolicitudesPageState extends State<MisSolicitudesPage>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const _HeaderBack(
+                      _HeaderBack(
                         breadcrumb: 'MIS SOLICITUDES',
                         titulo: 'Estado de reclamos',
+                        onRefresh: _refrescar,
                       ),
-
                       const SizedBox(height: 20),
-
                       if (!_cargando && _solicitudes.isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.only(bottom: 14),
@@ -203,7 +207,6 @@ class _MisSolicitudesPageState extends State<MisSolicitudesPage>
                             ),
                           ),
                         ),
-
                       Expanded(
                         child: _buildContenido(),
                       ),
@@ -229,13 +232,17 @@ class _MisSolicitudesPageState extends State<MisSolicitudesPage>
     }
 
     if (_solicitudes.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+      return RefreshIndicator(
+        color: const Color(0xFF0A8F4D),
+        onRefresh: _refrescar,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
           children: [
+            const SizedBox(height: 120),
             Container(
               width: 80,
               height: 80,
+              margin: const EdgeInsets.symmetric(horizontal: 120),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.06),
                 shape: BoxShape.circle,
@@ -250,22 +257,26 @@ class _MisSolicitudesPageState extends State<MisSolicitudesPage>
               ),
             ),
             const SizedBox(height: 20),
-            const Text(
-              'Sin solicitudes aún',
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
+            const Center(
+              child: Text(
+                'Sin solicitudes aún',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Cuando reclames un objeto,\naparecerá aquí su estado.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white30,
-                fontSize: 13,
-                height: 1.5,
+            const Center(
+              child: Text(
+                'Cuando reclames un objeto,\naparecerá aquí su estado.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white30,
+                  fontSize: 13,
+                  height: 1.5,
+                ),
               ),
             ),
           ],
@@ -273,24 +284,30 @@ class _MisSolicitudesPageState extends State<MisSolicitudesPage>
       );
     }
 
-    return ListView.builder(
-      itemCount: _solicitudes.length,
-      itemBuilder: (_, i) {
-        final s = _solicitudes[i];
+    return RefreshIndicator(
+      color: const Color(0xFF0A8F4D),
+      onRefresh: _refrescar,
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        itemCount: _solicitudes.length,
+        itemBuilder: (_, i) {
+          final s = _solicitudes[i];
 
-        final estado = int.tryParse(
-              (s['idEstado'] ?? s['id_estado'] ?? -1).toString(),
-            ) ??
-            -1;
+          final estado = int.tryParse(
+                (s['idEstado'] ?? s['id_estado'] ?? -1).toString(),
+              ) ??
+              -1;
 
-        return _TarjetaSolicitud(
-          solicitud: s,
-          estado: estado,
-          estadoTexto: _estadoTexto(estado),
-          estadoColor: _estadoColor(estado),
-          estadoIcono: _estadoIcono(estado),
-        );
-      },
+          return _TarjetaSolicitud(
+            solicitud: s,
+            estado: estado,
+            estadoTexto: _estadoTexto(estado),
+            estadoColor: _estadoColor(estado),
+            estadoIcono: _estadoIcono(estado),
+            onActualizada: _refrescar,
+          );
+        },
+      ),
     );
   }
 }
@@ -301,6 +318,7 @@ class _TarjetaSolicitud extends StatefulWidget {
   final String estadoTexto;
   final Color estadoColor;
   final IconData estadoIcono;
+  final Future<void> Function() onActualizada;
 
   const _TarjetaSolicitud({
     required this.solicitud,
@@ -308,6 +326,7 @@ class _TarjetaSolicitud extends StatefulWidget {
     required this.estadoTexto,
     required this.estadoColor,
     required this.estadoIcono,
+    required this.onActualizada,
   });
 
   @override
@@ -316,6 +335,73 @@ class _TarjetaSolicitud extends StatefulWidget {
 
 class _TarjetaSolicitudState extends State<_TarjetaSolicitud> {
   bool _expandida = false;
+  bool _anulando = false;
+
+  bool _tieneIdReporte(dynamic valor) {
+    if (valor == null) return false;
+    final texto = valor.toString().trim().toLowerCase();
+    return texto.isNotEmpty && texto != 'null';
+  }
+
+  Future<void> _anularSolicitud() async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Anular solicitud'),
+        content: const Text(
+          '¿Seguro que quieres anular esta solicitud? Solo deberías hacerlo si ya no necesitas reclamar este objeto.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Anular'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar != true) return;
+
+    final idSolicitud = int.tryParse(
+      widget.solicitud['id']?.toString() ?? '',
+    );
+
+    if (idSolicitud == null) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('ID de solicitud inválido, no se puede anular.'),
+        ),
+      );
+      return;
+    }
+
+    setState(() => _anulando = true);
+
+    final ok = await SolicitudRepository.anularSolicitud(idSolicitud);
+
+    if (!mounted) return;
+
+    setState(() => _anulando = false);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          ok
+              ? 'Solicitud anulada correctamente'
+              : 'No se pudo anular la solicitud',
+        ),
+      ),
+    );
+
+    if (ok) {
+      await widget.onActualizada();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -333,7 +419,8 @@ class _TarjetaSolicitudState extends State<_TarjetaSolicitud> {
       'la oficina correspondiente'
     ).toString();
 
-    final esCoincidencia = s['idReporte'] != null || s['id_reporte'] != null;
+    final esCoincidencia = _tieneIdReporte(s['idReporte']) ||
+        _tieneIdReporte(s['id_reporte']);
 
     final descripcionSolicitud =
         (s['descripcion'] ?? 'Sin descripción').toString();
@@ -396,62 +483,15 @@ class _TarjetaSolicitudState extends State<_TarjetaSolicitud> {
                                   color: widget.estadoColor,
                                 ),
                         ),
-
                         const SizedBox(width: 14),
-
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              if (esCoincidencia)
-                                Container(
-                                  margin: const EdgeInsets.only(bottom: 6),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 3,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFE07B2A)
-                                        .withOpacity(0.15),
-                                    borderRadius: BorderRadius.circular(6),
-                                    border: Border.all(
-                                      color: const Color(0xFFE07B2A)
-                                          .withOpacity(0.4),
-                                    ),
-                                  ),
-                                  child: const Text(
-                                    '⚡ Coincidencia admin',
-                                    style: TextStyle(
-                                      color: Color(0xFFE07B2A),
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                )
-                              else
-                                Container(
-                                  margin: const EdgeInsets.only(bottom: 6),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 3,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.08),
-                                    borderRadius: BorderRadius.circular(6),
-                                    border: Border.all(
-                                      color: Colors.white.withOpacity(0.18),
-                                    ),
-                                  ),
-                                  child: const Text(
-                                    'Solicitud manual',
-                                    style: TextStyle(
-                                      color: Colors.white54,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-
+                              _EtiquetaTipoSolicitud(
+                                esCoincidencia: esCoincidencia,
+                              ),
+                              const SizedBox(height: 6),
                               Text(
                                 nombreObjeto,
                                 style: const TextStyle(
@@ -462,9 +502,7 @@ class _TarjetaSolicitudState extends State<_TarjetaSolicitud> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
-
                               const SizedBox(height: 4),
-
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 10,
@@ -500,7 +538,6 @@ class _TarjetaSolicitudState extends State<_TarjetaSolicitud> {
                             ],
                           ),
                         ),
-
                         AnimatedRotation(
                           turns: _expandida ? 0.5 : 0,
                           duration: const Duration(milliseconds: 250),
@@ -514,7 +551,6 @@ class _TarjetaSolicitudState extends State<_TarjetaSolicitud> {
                     ),
                   ),
                 ),
-
                 AnimatedSize(
                   duration: const Duration(milliseconds: 250),
                   curve: Curves.easeOut,
@@ -528,9 +564,7 @@ class _TarjetaSolicitudState extends State<_TarjetaSolicitud> {
                                 color: Colors.white.withOpacity(0.08),
                                 height: 1,
                               ),
-
                               const SizedBox(height: 14),
-
                               _FilaInfo(
                                 icono: Icons.description_outlined,
                                 label: esCoincidencia
@@ -538,32 +572,37 @@ class _TarjetaSolicitudState extends State<_TarjetaSolicitud> {
                                     : 'Tu descripción',
                                 valor: descripcionSolicitud,
                               ),
-
                               if (descripcionObjeto.isNotEmpty) ...[
                                 const SizedBox(height: 10),
                                 _FilaInfo(
                                   icono: Icons.inventory_2_outlined,
-                                  label: 'Objeto encontrado',
+                                  label: esCoincidencia
+                                      ? 'Objeto sugerido por el administrador'
+                                      : 'Objeto reclamado',
                                   valor: descripcionObjeto,
                                 ),
                               ],
-
                               const SizedBox(height: 10),
-
                               _FilaInfo(
                                 icono: Icons.location_on_outlined,
                                 label: 'Ubicación',
                                 valor: nombreLugar,
                               ),
-
                               const SizedBox(height: 10),
-
                               _FilaInfo(
                                 icono: Icons.calendar_today_outlined,
                                 label: 'Fecha aprox. pérdida',
                                 valor: fechaPerdida,
                               ),
-
+                              if (esCoincidencia) ...[
+                                const SizedBox(height: 14),
+                                _BannerEstado(
+                                  color: const Color(0xFFE07B2A),
+                                  icono: Icons.bolt_rounded,
+                                  mensaje:
+                                      'Esta solicitud fue creada automáticamente porque el administrador encontró una coincidencia con tu reporte de pérdida.',
+                                ),
+                              ],
                               if (widget.estado ==
                                   Estados.solicitudAprobada) ...[
                                 const SizedBox(height: 14),
@@ -574,7 +613,6 @@ class _TarjetaSolicitudState extends State<_TarjetaSolicitud> {
                                       'Solicitud aprobada. Dirígete a $nombreLugar para recoger tu objeto.',
                                 ),
                               ],
-
                               if (widget.estado ==
                                   Estados.solicitudRechazada) ...[
                                 const SizedBox(height: 14),
@@ -585,7 +623,6 @@ class _TarjetaSolicitudState extends State<_TarjetaSolicitud> {
                                       'Solicitud rechazada. Los datos no coinciden con el objeto registrado.',
                                 ),
                               ],
-
                               if (widget.estado ==
                                   Estados.solicitudAnulada) ...[
                                 const SizedBox(height: 14),
@@ -596,7 +633,6 @@ class _TarjetaSolicitudState extends State<_TarjetaSolicitud> {
                                       'Solicitud anulada. Este reclamo ya no está activo.',
                                 ),
                               ],
-
                               if (widget.estado ==
                                   Estados.solicitudEntregada) ...[
                                 const SizedBox(height: 14),
@@ -607,74 +643,28 @@ class _TarjetaSolicitudState extends State<_TarjetaSolicitud> {
                                       'Objeto entregado. El proceso de reclamo fue finalizado.',
                                 ),
                               ],
-
                               if (widget.estado ==
                                   Estados.solicitudPendiente) ...[
                                 const SizedBox(height: 14),
                                 SizedBox(
                                   width: double.infinity,
                                   child: OutlinedButton.icon(
-                                    onPressed: () async {
-                                      final confirmar = await showDialog<bool>(
-                                        context: context,
-                                        builder: (ctx) => AlertDialog(
-                                          title: const Text('Anular solicitud'),
-                                          content: const Text(
-                                            '¿Seguro que quieres anular esta solicitud? Solo deberías hacerlo si ya no necesitas reclamar este objeto.',
-                                          ),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () => Navigator.pop(ctx, false),
-                                              child: const Text('Cancelar'),
+                                    onPressed:
+                                        _anulando ? null : _anularSolicitud,
+                                    icon: _anulando
+                                        ? const SizedBox(
+                                            width: 16,
+                                            height: 16,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
                                             ),
-                                            TextButton(
-                                              onPressed: () => Navigator.pop(ctx, true),
-                                              child: const Text('Anular'),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-
-                                      if (confirmar != true) return;
-
-                                      final idSolicitud = int.tryParse(
-                                        widget.solicitud['id']?.toString() ?? '',
-                                      );
-
-                                      if (idSolicitud == null) {
-                                        if (!context.mounted) return;
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(
-                                            content: Text(
-                                              'ID de solicitud inválido, no se puede anular.',
-                                            ),
-                                          ),
-                                        );
-                                        return;
-                                      }
-
-                                      final ok = await SolicitudRepository.anularSolicitud(
-                                        idSolicitud,
-                                      );
-
-                                      if (!context.mounted) return;
-
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            ok
-                                                ? 'Solicitud anulada correctamente'
-                                                : 'No se pudo anular la solicitud',
-                                          ),
-                                        ),
-                                      );
-
-                                      if (ok) {
-                                        Navigator.pop(context);
-                                      }
-                                    },
-                                    icon: const Icon(Icons.cancel_outlined),
-                                    label: const Text('Anular solicitud'),
+                                          )
+                                        : const Icon(Icons.cancel_outlined),
+                                    label: Text(
+                                      _anulando
+                                          ? 'Anulando...'
+                                          : 'Anular solicitud',
+                                    ),
                                   ),
                                 ),
                               ],
@@ -686,6 +676,61 @@ class _TarjetaSolicitudState extends State<_TarjetaSolicitud> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EtiquetaTipoSolicitud extends StatelessWidget {
+  final bool esCoincidencia;
+
+  const _EtiquetaTipoSolicitud({required this.esCoincidencia});
+
+  @override
+  Widget build(BuildContext context) {
+    if (esCoincidencia) {
+      return Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 8,
+          vertical: 3,
+        ),
+        decoration: BoxDecoration(
+          color: const Color(0xFFE07B2A).withOpacity(0.15),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: const Color(0xFFE07B2A).withOpacity(0.4),
+          ),
+        ),
+        child: const Text(
+          '⚡ Coincidencia admin',
+          style: TextStyle(
+            color: Color(0xFFE07B2A),
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 8,
+        vertical: 3,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.18),
+        ),
+      ),
+      child: const Text(
+        'Solicitud manual',
+        style: TextStyle(
+          color: Colors.white54,
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );
@@ -820,9 +865,11 @@ class _BannerEstado extends StatelessWidget {
 class _HeaderBack extends StatelessWidget {
   final String titulo;
   final String? breadcrumb;
+  final Future<void> Function() onRefresh;
 
   const _HeaderBack({
     required this.titulo,
+    required this.onRefresh,
     this.breadcrumb,
   });
 
@@ -851,28 +898,50 @@ class _HeaderBack extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 14),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (breadcrumb != null)
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (breadcrumb != null)
+                Text(
+                  breadcrumb!,
+                  style: const TextStyle(
+                    color: Color(0xFF0A8F4D),
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 2,
+                  ),
+                ),
               Text(
-                breadcrumb!,
+                titulo,
                 style: const TextStyle(
-                  color: Color(0xFF0A8F4D),
-                  fontSize: 9,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 2,
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
-            Text(
-              titulo,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
+            ],
+          ),
+        ),
+        InkWell(
+          onTap: () async => onRefresh(),
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.07),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.1),
               ),
             ),
-          ],
+            child: const Icon(
+              Icons.refresh_rounded,
+              color: Colors.white70,
+              size: 18,
+            ),
+          ),
         ),
       ],
     );
