@@ -207,7 +207,9 @@ class _ObjetosListPageState extends State<ObjetosListPage> {
                                         context,
                                         MaterialPageRoute(
                                           builder: (_) =>
-                                              ObjetoDetailPage(objeto: objeto),
+                                              ObjetoDetailPage(
+                                                idObjeto: objeto['id'] ?? objeto['id_objeto'],
+                                              ),
                                         ),
                                       );
                                     },

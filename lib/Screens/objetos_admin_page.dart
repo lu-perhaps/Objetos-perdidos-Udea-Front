@@ -219,7 +219,9 @@ class _ObjetosAdminPageState extends State<ObjetosAdminPage> {
                                         context,
                                         MaterialPageRoute(
                                           builder: (_) =>
-                                              ObjetoDetailPage(objeto: objeto),
+                                              ObjetoDetailPage(
+                                                idObjeto: objeto['id'] ?? objeto['id_objeto'],
+                                              ),
                                         ),
                                       );
                                     },

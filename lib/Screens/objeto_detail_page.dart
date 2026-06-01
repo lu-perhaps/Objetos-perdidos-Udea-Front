@@ -1,13 +1,14 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../Repositories/objeto_repository.dart';
 import 'solicitud_reclamo_page.dart';
 import 'header_udea.dart';
 
 class ObjetoDetailPage extends StatefulWidget {
-  final Map<String, dynamic> objeto;
+  final int idObjeto;
 
-  const ObjetoDetailPage({super.key, required this.objeto});
+  const ObjetoDetailPage({super.key, required this.idObjeto});
 
   @override
   State<ObjetoDetailPage> createState() => _ObjetoDetailPageState();
@@ -15,11 +16,29 @@ class ObjetoDetailPage extends StatefulWidget {
 
 class _ObjetoDetailPageState extends State<ObjetoDetailPage> {
   bool _esAdmin = false;
+  Map<String, dynamic>? _objeto;
+  bool _cargandoObjeto = true;
 
   @override
   void initState() {
     super.initState();
     _verificarRol();
+    _cargarObjeto();
+  }
+
+  Future<void> _cargarObjeto() async {
+    setState(() => _cargandoObjeto = true);
+    final data = await ObjetoRepository.obtenerObjetoPorId(widget.idObjeto);
+    if (!mounted) return;
+    setState(() {
+      _objeto = data;
+      _cargandoObjeto = false;
+    });
+    if (data == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Error cargando detalle del objeto')),
+      );
+    }
   }
 
   Future<void> _verificarRol() async {
@@ -29,7 +48,13 @@ class _ObjetoDetailPageState extends State<ObjetoDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final objeto = widget.objeto;
+    if (_cargandoObjeto) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final objeto = _objeto ?? {};
     final categoria = (
       objeto['categoria'] ??
       objeto['tbl_categoria']?['nombre'] ??
@@ -62,7 +87,7 @@ class _ObjetoDetailPageState extends State<ObjetoDetailPage> {
       objeto['lugarActualNombre'] ??
       'No registrado'
     ).toString();
-    final fotoUrl = (objeto['fotografia'] ?? '').toString();
+    final fotoUrl = (objeto['fotografia'] ?? objeto['fotografiaUrl'] ?? '').toString();
     final nombre = (objeto['nombre'] ?? 'Sin nombre').toString();
 
     final size = MediaQuery.of(context).size;

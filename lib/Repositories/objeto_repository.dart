@@ -120,6 +120,25 @@ class ObjetoRepository {
     }
   }
 
+  static Future<Map<String, dynamic>?> obtenerObjetoPorId(int idObjeto) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/objetos/$idObjeto'),
+      );
+
+      if (response.statusCode != 200) {
+        debugPrint('ERROR obtenerObjetoPorId API: ${response.statusCode} ${response.body}');
+        return null;
+      }
+
+      final Map<String, dynamic> data = jsonDecode(response.body);
+      return data;
+    } catch (e) {
+      debugPrint('ERROR obtenerObjetoPorId API: $e');
+      return null;
+    }
+  }
+
     // Sube la imagen al Storage y retorna la ruta
   static Future<void> subirImagen({
     required String rutaStorage,
