@@ -15,16 +15,40 @@ class ObjetoDetailPage extends StatefulWidget {
   State<ObjetoDetailPage> createState() => _ObjetoDetailPageState();
 }
 
-class _ObjetoDetailPageState extends State<ObjetoDetailPage> {
+class _ObjetoDetailPageState extends State<ObjetoDetailPage>
+    with SingleTickerProviderStateMixin {
   bool _esAdmin = false;
   Map<String, dynamic>? _objeto;
   bool _cargandoObjeto = true;
 
+  late AnimationController _animCtrl;
+  late Animation<double> _fadeAnim;
+  late Animation<Offset> _slideAnim;
+
   @override
   void initState() {
     super.initState();
+
+    _animCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 650),
+    );
+
+    _fadeAnim = CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut);
+    _slideAnim = Tween<Offset>(
+      begin: const Offset(0, 0.05),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut));
+
+    _animCtrl.forward();
     _verificarRol();
     _cargarObjeto();
+  }
+
+  @override
+  void dispose() {
+    _animCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _cargarObjeto() async {
@@ -74,9 +98,15 @@ class _ObjetoDetailPageState extends State<ObjetoDetailPage> {
             onPressed: () => Navigator.pop(ctx, false),
             child: const Text('Cancelar'),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Ocultar'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFD97706),
+            ),
+            child: const Text(
+              'Ocultar',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -106,43 +136,56 @@ class _ObjetoDetailPageState extends State<ObjetoDetailPage> {
   @override
   Widget build(BuildContext context) {
     if (_cargandoObjeto) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.asset('assets/udea_bg.jpeg', fit: BoxFit.cover),
+            Container(color: Colors.black.withOpacity(0.45)),
+            const Center(
+              child: CircularProgressIndicator(color: Color(0xFF0A8F4D)),
+            ),
+          ],
+        ),
       );
     }
 
     final objeto = _objeto ?? {};
 
-    final categoria = (objeto['categoria'] ??
-            objeto['tbl_categoria']?['nombre'] ??
-            'Objeto encontrado')
-        .toString();
-
-    final descripcionGeneral = (objeto['descripcionGeneral'] ??
-            objeto['descripcion_general'] ??
-            'Sin descripción')
-        .toString();
-
-    final descripcionDetallada = (objeto['descripcionDetallada'] ??
-            objeto['descripcion_detallada'] ??
-            '')
-        .toString();
-
-    final fechaHallazgo =
-        (objeto['fechaHallazgo'] ?? objeto['fecha_hallazgo'] ?? '')
+    final categoria =
+        (objeto['categoria'] ??
+                objeto['tbl_categoria']?['nombre'] ??
+                'Objeto encontrado')
             .toString();
 
-    final lugarEncontrado = (objeto['lugarEncontrado'] ??
-            objeto['lugar_encontrado'] ??
-            objeto['lugarEncontradoNombre'] ??
-            'No registrado')
-        .toString();
+    final descripcionGeneral =
+        (objeto['descripcionGeneral'] ??
+                objeto['descripcion_general'] ??
+                'Sin descripción')
+            .toString();
 
-    final lugarActual = (objeto['lugarActual'] ??
-            objeto['lugar_actual'] ??
-            objeto['lugarActualNombre'] ??
-            'No registrado')
-        .toString();
+    final descripcionDetallada =
+        (objeto['descripcionDetallada'] ??
+                objeto['descripcion_detallada'] ??
+                '')
+            .toString();
+
+    final fechaHallazgo =
+        (objeto['fechaHallazgo'] ?? objeto['fecha_hallazgo'] ?? '').toString();
+
+    final lugarEncontrado =
+        (objeto['lugarEncontrado'] ??
+                objeto['lugar_encontrado'] ??
+                objeto['lugarEncontradoNombre'] ??
+                'No registrado')
+            .toString();
+
+    final lugarActual =
+        (objeto['lugarActual'] ??
+                objeto['lugar_actual'] ??
+                objeto['lugarActualNombre'] ??
+                'No registrado')
+            .toString();
 
     final fotoUrl =
         (objeto['fotografia'] ?? objeto['fotografiaUrl'] ?? '').toString();
@@ -152,315 +195,301 @@ class _ObjetoDetailPageState extends State<ObjetoDetailPage> {
     final estado = (objeto['estado'] ?? '').toString();
 
     final size = MediaQuery.of(context).size;
-    final isWide = size.width > 600;
+    final isWide = size.width > 760;
 
     return Scaffold(
       body: Stack(
         fit: StackFit.expand,
         children: [
           Image.asset('assets/udea_bg.jpeg', fit: BoxFit.cover),
+          BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 1.2, sigmaY: 1.2),
+            child: const SizedBox.expand(),
+          ),
           Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
                 colors: [
-                  Color(0xBB000000),
-                  Color(0xCC021008),
-                  Color(0xEE011208),
+                  Colors.black.withOpacity(0.58),
+                  Colors.black.withOpacity(0.38),
+                  const Color(0xFF0A3D24).withOpacity(0.35),
                 ],
-                stops: [0.0, 0.5, 1.0],
               ),
             ),
           ),
-          BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-            child: const SizedBox.expand(),
-          ),
           SafeArea(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.symmetric(
-                horizontal: isWide ? size.width * 0.18 : 20,
-                vertical: 16,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      _BotonVolver(onTap: () => Navigator.pop(context)),
-                      const SizedBox(width: 12),
-                      const Expanded(
-                        child: HeaderUdea(titulo: 'Detalle del objeto'),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF0A8F4D).withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: const Color(0xFF0A8F4D).withOpacity(0.4),
-                          ),
-                        ),
-                        child: Text(
-                          categoria,
-                          style: const TextStyle(
-                            color: Color(0xFF0A8F4D),
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ),
-                      if (_esAdmin && estado.isNotEmpty) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.orange.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: Colors.orange.withOpacity(0.4),
-                            ),
-                          ),
-                          child: Text(
-                            estado,
-                            style: const TextStyle(
-                              color: Colors.orange,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
-                    child: Container(
-                      width: double.infinity,
-                      height: 280,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.07),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: const Color(0xFF0A8F4D).withOpacity(0.25),
-                          width: 1.5,
-                        ),
-                      ),
-                      child: fotoUrl.isNotEmpty
-                          ? Image.network(
-                              fotoUrl,
-                              fit: BoxFit.contain,
-                              errorBuilder: (_, __, ___) => const _SinImagen(),
-                            )
-                          : const _SinImagen(),
+            child: FadeTransition(
+              opacity: _fadeAnim,
+              child: SlideTransition(
+                position: _slideAnim,
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: isWide ? 980 : 560,
                     ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  Text(
-                    nombre,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 26,
-                      fontWeight: FontWeight.w800,
-                      height: 1.1,
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  _TarjetaInfo(
-                    titulo: 'INFORMACIÓN GENERAL',
-                    icono: Icons.info_outline_rounded,
-                    color: const Color(0xFF0A8F4D),
-                    children: [
-                      _FilaInfo(
-                        icono: Icons.category_outlined,
-                        label: 'Tipo de objeto',
-                        valor: categoria,
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isWide ? 26 : 22,
+                        vertical: 18,
                       ),
-                      _FilaInfo(
-                        icono: Icons.description_outlined,
-                        label: 'Descripción',
-                        valor: descripcionGeneral,
-                      ),
-                      _FilaInfo(
-                        icono: Icons.location_on_outlined,
-                        label: 'Lugar encontrado',
-                        valor: lugarEncontrado,
-                      ),
-                      _FilaInfo(
-                        icono: Icons.place_outlined,
-                        label: 'Ubicación actual',
-                        valor: lugarActual,
-                      ),
-                      _FilaInfo(
-                        icono: Icons.calendar_today_outlined,
-                        label: 'Fecha del hallazgo',
-                        valor: fechaHallazgo.isEmpty
-                            ? 'No registrada'
-                            : fechaHallazgo,
-                      ),
-                    ],
-                  ),
-
-                  if (_esAdmin) ...[
-                    const SizedBox(height: 16),
-                    _TarjetaInfo(
-                      titulo: 'INFORMACIÓN PRIVADA',
-                      icono: Icons.lock_outline_rounded,
-                      color: Colors.orange,
-                      children: [
-                        _FilaInfo(
-                          icono: Icons.notes_rounded,
-                          label: 'Descripción detallada',
-                          valor: descripcionDetallada.isEmpty
-                              ? 'No registrada'
-                              : descripcionDetallada,
-                        ),
-                      ],
-                    ),
-                  ],
-
-                  if (_esAdmin && _puedeOcultarPublicacion(objeto)) ...[
-                    const SizedBox(height: 18),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: _ocultarPublicacion,
-                        icon: const Icon(Icons.visibility_off_outlined),
-                        label: const Text('OCULTAR PUBLICACIÓN'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.orange,
-                          side: const BorderSide(color: Colors.orange),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-
-                  if (!_esAdmin) ...[
-                    const SizedBox(height: 28),
-                    const Text(
-                      '¿ES TUYO ESTE OBJETO?',
-                      style: TextStyle(
-                        color: Color(0xFF0A8F4D),
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 2.5,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(20),
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                        child: Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.06),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: const Color(0xFF0A8F4D).withOpacity(0.25),
-                              width: 1.5,
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _Header(nombre: nombre),
+                          const SizedBox(height: 20),
+                          _ImageCard(fotoUrl: fotoUrl),
+                          const SizedBox(height: 18),
+                          Row(
                             children: [
-                              Text(
-                                'Si reconoces este objeto como tuyo, inicia una solicitud de reclamo. Deberás proporcionar detalles que verifiquen tu propiedad.',
-                                style: TextStyle(
-                                  color: Colors.white.withOpacity(0.6),
-                                  fontSize: 14,
-                                  height: 1.5,
+                              _Badge(
+                                texto: categoria,
+                                color: const Color(0xFF0A8F4D),
+                                icono: Icons.category_outlined,
+                              ),
+                              if (_esAdmin && estado.isNotEmpty) ...[
+                                const SizedBox(width: 8),
+                                _Badge(
+                                  texto: estado,
+                                  color: const Color(0xFFD97706),
+                                  icono: Icons.info_outline_rounded,
+                                ),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          Text(
+                            nombre,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 31,
+                              fontWeight: FontWeight.w900,
+                              height: 1.08,
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          _TarjetaInfo(
+                            titulo: 'Información general',
+                            icono: Icons.info_outline_rounded,
+                            color: const Color(0xFF0A8F4D),
+                            children: [
+                              _FilaInfo(
+                                icono: Icons.category_outlined,
+                                label: 'Tipo de objeto',
+                                valor: categoria,
+                              ),
+                              _FilaInfo(
+                                icono: Icons.description_outlined,
+                                label: 'Descripción',
+                                valor: descripcionGeneral,
+                              ),
+                              _FilaInfo(
+                                icono: Icons.calendar_today_outlined,
+                                label: 'Fecha del hallazgo',
+                                valor: fechaHallazgo.isEmpty
+                                    ? 'No registrada'
+                                    : fechaHallazgo,
+                              ),
+                              if (_esAdmin) ...[
+                                _FilaInfo(
+                                  icono: Icons.location_on_outlined,
+                                  label: 'Lugar encontrado',
+                                  valor: lugarEncontrado,
+                                ),
+                                _FilaInfo(
+                                  icono: Icons.place_outlined,
+                                  label: 'Ubicación actual',
+                                  valor: lugarActual,
+                                ),
+                              ] else
+                                const _FilaInfo(
+                                  icono: Icons.lock_outline_rounded,
+                                  label: 'Ubicación de custodia',
+                                  valor:
+                                      'Disponible únicamente si tu solicitud de reclamo es aprobada.',
+                                ),
+                            ],
+                          ),
+                          if (_esAdmin) ...[
+                            const SizedBox(height: 14),
+                            _TarjetaInfo(
+                              titulo: 'Información privada',
+                              icono: Icons.lock_outline_rounded,
+                              color: const Color(0xFFD97706),
+                              children: [
+                                _FilaInfo(
+                                  icono: Icons.notes_rounded,
+                                  label: 'Descripción detallada',
+                                  valor: descripcionDetallada.isEmpty
+                                      ? 'No registrada'
+                                      : descripcionDetallada,
+                                ),
+                              ],
+                            ),
+                          ],
+                          if (_esAdmin && _puedeOcultarPublicacion(objeto)) ...[
+                            const SizedBox(height: 18),
+                            SizedBox(
+                              width: double.infinity,
+                              height: 50,
+                              child: OutlinedButton.icon(
+                                onPressed: _ocultarPublicacion,
+                                icon: const Icon(
+                                  Icons.visibility_off_outlined,
+                                ),
+                                label: const Text('Ocultar publicación'),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: const Color(0xFFD97706),
+                                  side: const BorderSide(
+                                    color: Color(0xFFD97706),
+                                  ),
+                                  backgroundColor:
+                                      Colors.white.withOpacity(0.94),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
                                 ),
                               ),
-                              const SizedBox(height: 20),
-                              SizedBox(
-                                width: double.infinity,
-                                child: ElevatedButton.icon(
-                                  onPressed: () => Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => SolicitudReclamoPage(
-                                        objeto: objeto,
+                            ),
+                          ],
+                          if (!_esAdmin) ...[
+                            const SizedBox(height: 24),
+                            const Text(
+                              '¿ES TUYO ESTE OBJETO?',
+                              style: TextStyle(
+                                color: Color(0xFF9EF0C0),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 2.5,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            _WhiteCard(
+                              padding: const EdgeInsets.all(20),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Si reconoces este objeto como tuyo, inicia una solicitud de reclamo. No se muestra la ubicación exacta para proteger el proceso de verificación.',
+                                    style: TextStyle(
+                                      color: Color(0xFF4B5563),
+                                      fontSize: 14,
+                                      height: 1.5,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 18),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    height: 52,
+                                    child: ElevatedButton.icon(
+                                      onPressed: () => Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => SolicitudReclamoPage(
+                                            objeto: objeto,
+                                          ),
+                                        ),
+                                      ),
+                                      icon: const Icon(
+                                        Icons.handshake_outlined,
+                                        color: Colors.white,
+                                        size: 20,
+                                      ),
+                                      label: const Text(
+                                        'Reclamar este objeto',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w900,
+                                        ),
+                                      ),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor:
+                                            const Color(0xFF0A8F4D),
+                                        elevation: 0,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(14),
+                                        ),
                                       ),
                                     ),
                                   ),
-                                  icon: const Icon(
-                                    Icons.handshake_outlined,
-                                    color: Colors.white,
-                                    size: 20,
-                                  ),
-                                  label: const Text(
-                                    'RECLAMAR ESTE OBJETO',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: 0.5,
-                                    ),
-                                  ),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF0A8F4D),
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 16,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                    elevation: 0,
-                                  ),
-                                ),
+                                ],
                               ),
-                            ],
+                            ),
+                          ],
+                          const SizedBox(height: 26),
+                          const Center(
+                            child: Text(
+                              'UdeA 2024 · Objetos Perdidos',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 11,
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                    ),
-                  ],
-
-                  const SizedBox(height: 32),
-
-                  Center(
-                    child: Text(
-                      'UdeA 2024 · Objetos Perdidos',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.2),
-                        fontSize: 11,
+                          const SizedBox(height: 14),
+                        ],
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
-                ],
+                ),
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _Header extends StatelessWidget {
+  final String nombre;
+
+  const _Header({required this.nombre});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        _BotonVolver(onTap: () => Navigator.pop(context)),
+        const SizedBox(width: 14),
+        Expanded(
+          child: HeaderUdea(
+            titulo: 'Detalle del objeto',
+            subtitulo: nombre,
+            oscuro: true,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ImageCard extends StatelessWidget {
+  final String fotoUrl;
+
+  const _ImageCard({required this.fotoUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    return _WhiteCard(
+      padding: EdgeInsets.zero,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: SizedBox(
+          width: double.infinity,
+          height: 285,
+          child: fotoUrl.isNotEmpty
+              ? Image.network(
+                  fotoUrl,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => const _SinImagen(),
+                )
+              : const _SinImagen(),
+        ),
       ),
     );
   }
@@ -481,40 +510,30 @@ class _TarjetaInfo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Container(
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.06),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: color.withOpacity(0.3), width: 1.5),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return _WhiteCard(
+      padding: const EdgeInsets.all(18),
+      borderColor: color.withOpacity(0.22),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Row(
-                children: [
-                  Icon(icono, color: color, size: 16),
-                  const SizedBox(width: 8),
-                  Text(
-                    titulo,
-                    style: TextStyle(
-                      color: color,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.5,
-                    ),
-                  ),
-                ],
+              Icon(icono, color: color, size: 16),
+              const SizedBox(width: 8),
+              Text(
+                titulo.toUpperCase(),
+                style: TextStyle(
+                  color: color,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.5,
+                ),
               ),
-              const SizedBox(height: 14),
-              ...children,
             ],
           ),
-        ),
+          const SizedBox(height: 14),
+          ...children,
+        ],
       ),
     );
   }
@@ -534,11 +553,11 @@ class _FilaInfo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 13),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icono, color: Colors.white38, size: 16),
+          Icon(icono, color: const Color(0xFF6B7280), size: 16),
           const SizedBox(width: 10),
           Expanded(
             child: RichText(
@@ -547,18 +566,18 @@ class _FilaInfo extends StatelessWidget {
                   TextSpan(
                     text: '$label\n',
                     style: const TextStyle(
-                      color: Colors.white54,
+                      color: Color(0xFF6B7280),
                       fontSize: 11,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                   TextSpan(
                     text: valor,
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: Color(0xFF111827),
                       fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      height: 1.5,
+                      fontWeight: FontWeight.w800,
+                      height: 1.45,
                     ),
                   ),
                 ],
@@ -571,28 +590,105 @@ class _FilaInfo extends StatelessWidget {
   }
 }
 
+class _Badge extends StatelessWidget {
+  final String texto;
+  final Color color;
+  final IconData icono;
+
+  const _Badge({
+    required this.texto,
+    required this.color,
+    required this.icono,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.94),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withOpacity(0.35)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icono, color: color, size: 12),
+          const SizedBox(width: 5),
+          Text(
+            texto,
+            style: TextStyle(
+              color: color,
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WhiteCard extends StatelessWidget {
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+  final Color? borderColor;
+
+  const _WhiteCard({
+    required this.child,
+    required this.padding,
+    this.borderColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.94),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: borderColor ?? Colors.white.withOpacity(0.75),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.20),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+}
+
 class _SinImagen extends StatelessWidget {
   const _SinImagen();
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(
-          Icons.image_outlined,
-          size: 48,
-          color: Colors.white.withOpacity(0.25),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Sin fotografía',
-          style: TextStyle(
-            color: Colors.white.withOpacity(0.3),
-            fontSize: 13,
+    return Container(
+      color: const Color(0xFFF3F4F6),
+      child: const Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.image_outlined,
+            size: 48,
+            color: Color(0xFF9CA3AF),
           ),
-        ),
-      ],
+          SizedBox(height: 8),
+          Text(
+            'Sin fotografía',
+            style: TextStyle(
+              color: Color(0xFF6B7280),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -608,16 +704,23 @@ class _BotonVolver extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        width: 38,
-        height: 38,
+        width: 40,
+        height: 40,
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.06),
+          color: Colors.white.withOpacity(0.94),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white.withOpacity(0.08)),
+          border: Border.all(color: Colors.white.withOpacity(0.75)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.18),
+              blurRadius: 16,
+              offset: const Offset(0, 8),
+            ),
+          ],
         ),
         child: const Icon(
           Icons.arrow_back_rounded,
-          color: Colors.white70,
+          color: Color(0xFF111827),
           size: 18,
         ),
       ),

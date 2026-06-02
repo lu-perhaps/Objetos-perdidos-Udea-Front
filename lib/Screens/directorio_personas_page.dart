@@ -84,9 +84,7 @@ class _DirectorioPersonasPageState extends State<DirectorioPersonasPage>
           ? _todas
           : _todas.where((p) {
               final nombre = (p['nombre'] ?? '').toString().toLowerCase();
-              final doc = (p['numDocumento'] ??
-                      p['num_documento'] ??
-                      '')
+              final doc = (p['numDocumento'] ?? p['num_documento'] ?? '')
                   .toString()
                   .toLowerCase();
               final correo = (p['correo'] ?? '').toString().toLowerCase();
@@ -108,61 +106,62 @@ class _DirectorioPersonasPageState extends State<DirectorioPersonasPage>
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final isWide = size.width > 600;
+    final isWide = size.width > 760;
 
     return Scaffold(
       body: Stack(
         fit: StackFit.expand,
         children: [
           Image.asset('assets/udea_bg.jpeg', fit: BoxFit.cover),
+          BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 1.2, sigmaY: 1.2),
+            child: const SizedBox.expand(),
+          ),
           Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xBB000000), Color(0xEE011208)],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: [
+                  Colors.black.withOpacity(0.56),
+                  Colors.black.withOpacity(0.36),
+                  const Color(0xFF0A3D24).withOpacity(0.34),
+                ],
               ),
             ),
-          ),
-          BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-            child: const SizedBox.expand(),
           ),
           SafeArea(
             child: FadeTransition(
               opacity: _fadeAnim,
               child: SlideTransition(
                 position: _slideAnim,
-                child: Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: isWide ? size.width * 0.22 : 20,
-                    vertical: 16,
-                  ),
-                  child: Column(
-                    children: [
-                      _Header(onRefresh: _refrescar),
-                      const SizedBox(height: 20),
-                      _Buscador(
-                        ctrl: _busquedaCtrl,
-                        onClear: () {
-                          _busquedaCtrl.clear();
-                          _filtrar();
-                        },
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 980),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isWide ? 28 : 20,
+                        vertical: 18,
                       ),
-                      const SizedBox(height: 10),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: Text(
-                          'Registros encontrados: ${_filtradas.length}',
-                          style: const TextStyle(
-                            color: Colors.white38,
-                            fontSize: 12,
+                      child: Column(
+                        children: [
+                          _Header(
+                            total: _filtradas.length,
+                            onRefresh: _refrescar,
                           ),
-                        ),
+                          const SizedBox(height: 22),
+                          _Buscador(
+                            ctrl: _busquedaCtrl,
+                            onClear: () {
+                              _busquedaCtrl.clear();
+                              _filtrar();
+                            },
+                          ),
+                          const SizedBox(height: 16),
+                          Expanded(child: _buildContenido()),
+                        ],
                       ),
-                      const SizedBox(height: 10),
-                      Expanded(child: _buildContenido()),
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -189,25 +188,48 @@ class _DirectorioPersonasPageState extends State<DirectorioPersonasPage>
         onRefresh: _refrescar,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          children: const [
-            SizedBox(height: 120),
-            Icon(
-              Icons.people_outline,
-              color: Colors.white24,
-              size: 56,
-            ),
-            SizedBox(height: 16),
-            Center(
-              child: Text(
-                'No se encontraron estudiantes',
-                style: TextStyle(color: Colors.white54, fontSize: 16),
+          children: [
+            const SizedBox(height: 110),
+            Container(
+              width: 86,
+              height: 86,
+              margin: const EdgeInsets.symmetric(horizontal: 420),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.94),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.18),
+                    blurRadius: 22,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.people_outline,
+                color: Color(0xFF0A8F4D),
+                size: 42,
               ),
             ),
-            SizedBox(height: 8),
-            Center(
+            const SizedBox(height: 20),
+            const Center(
               child: Text(
-                'Intenta con otro nombre, documento o correo',
-                style: TextStyle(color: Colors.white30, fontSize: 13),
+                'No se encontraron usuarios',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Center(
+              child: Text(
+                'Intenta con otro nombre, documento o correo.',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 13,
+                ),
               ),
             ),
           ],
@@ -228,76 +250,113 @@ class _DirectorioPersonasPageState extends State<DirectorioPersonasPage>
 }
 
 class _Header extends StatelessWidget {
+  final int total;
   final Future<void> Function() onRefresh;
 
-  const _Header({required this.onRefresh});
+  const _Header({
+    required this.total,
+    required this.onRefresh,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        InkWell(
-          onTap: () => Navigator.pop(context),
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.07),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white.withOpacity(0.1)),
-            ),
-            child: const Icon(
-              Icons.arrow_back_rounded,
-              color: Colors.white,
-              size: 18,
-            ),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.94),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withOpacity(0.75)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.20),
+            blurRadius: 22,
+            offset: const Offset(0, 10),
           ),
-        ),
-        const SizedBox(width: 14),
-        const Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'ADMIN · DIRECTORIO',
-                style: TextStyle(
-                  color: Color(0xFF0A8F4D),
-                  fontSize: 9,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 2,
-                ),
+        ],
+      ),
+      child: Row(
+        children: [
+          InkWell(
+            onTap: () => Navigator.pop(context),
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF3F4F6),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE5E7EB)),
               ),
-              Text(
-                'Directorio Usuarios',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                ),
+              child: const Icon(
+                Icons.arrow_back_rounded,
+                color: Color(0xFF111827),
+                size: 18,
               ),
-            ],
+            ),
           ),
-        ),
-        InkWell(
-          onTap: () async => onRefresh(),
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-            width: 38,
-            height: 38,
+          const SizedBox(width: 14),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'ADMIN · DIRECTORIO',
+                  style: TextStyle(
+                    color: Color(0xFF0A8F4D),
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 2,
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  'Directorio de usuarios',
+                  style: TextStyle(
+                    color: Color(0xFF111827),
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            margin: const EdgeInsets.only(right: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.07),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white.withOpacity(0.1)),
+              color: const Color(0xFFE1F5EE),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: const Color(0xFF0A8F4D).withOpacity(0.22)),
             ),
-            child: const Icon(
-              Icons.refresh_rounded,
-              color: Colors.white70,
-              size: 18,
+            child: Text(
+              '$total registro(s)',
+              style: const TextStyle(
+                color: Color(0xFF065F46),
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
+              ),
             ),
           ),
-        ),
-      ],
+          InkWell(
+            onTap: () async => onRefresh(),
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF3F4F6),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE5E7EB)),
+              ),
+              child: const Icon(
+                Icons.refresh_rounded,
+                color: Color(0xFF6B7280),
+                size: 18,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -313,50 +372,54 @@ class _Buscador extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: TextField(
-          controller: ctrl,
-          style: const TextStyle(color: Colors.white, fontSize: 14),
-          cursorColor: AppColors.verde,
-          decoration: InputDecoration(
-            hintText: 'Buscar por nombre, documento, correo o celular...',
-            hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
-            prefixIcon: const Icon(
-              Icons.search_rounded,
-              color: Colors.white38,
-              size: 20,
-            ),
-            suffixIcon: ctrl.text.isNotEmpty
-                ? IconButton(
-                    icon: const Icon(
-                      Icons.clear_rounded,
-                      color: Colors.white38,
-                      size: 18,
-                    ),
-                    onPressed: onClear,
-                  )
-                : null,
-            filled: true,
-            fillColor: Colors.white.withOpacity(0.07),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 18,
-              vertical: 16,
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
-            ),
-            focusedBorder: const OutlineInputBorder(
-              borderRadius: BorderRadius.all(Radius.circular(16)),
-              borderSide: BorderSide(color: AppColors.verde, width: 1.5),
-            ),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.94),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withOpacity(0.75)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.16),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: ctrl,
+        style: const TextStyle(
+          color: Color(0xFF111827),
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
+        cursorColor: AppColors.verde,
+        decoration: InputDecoration(
+          hintText: 'Buscar por nombre, documento, correo o celular...',
+          hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
+          prefixIcon: const Icon(
+            Icons.search_rounded,
+            color: Color(0xFF6B7280),
+            size: 20,
+          ),
+          suffixIcon: ctrl.text.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(
+                    Icons.clear_rounded,
+                    color: Color(0xFF6B7280),
+                    size: 18,
+                  ),
+                  onPressed: onClear,
+                )
+              : null,
+          filled: true,
+          fillColor: Colors.transparent,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 18,
+            vertical: 16,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(18),
+            borderSide: BorderSide.none,
           ),
         ),
       ),
@@ -384,20 +447,15 @@ class _TarjetaPersonaState extends State<_TarjetaPersona> {
     final correo = (p['correo'] ?? 'Sin correo').toString();
     final celular = (p['celular'] ?? 'No registrado').toString();
 
-    final doc = (p['numDocumento'] ??
-            p['num_documento'] ??
-            'No registrado')
-        .toString();
+    final doc =
+        (p['numDocumento'] ?? p['num_documento'] ?? 'No registrado').toString();
 
-    final tipoDoc = (p['tipoDocumento'] ??
-            p['tbl_tipo_documento']?['nombre'] ??
-            '')
-        .toString();
+    final tipoDoc =
+        (p['tipoDocumento'] ?? p['tbl_tipo_documento']?['nombre'] ?? '')
+            .toString();
 
-    final idEstado = int.tryParse(
-          (p['idEstado'] ?? p['id_estado'] ?? '').toString(),
-        ) ??
-        -1;
+    final idEstado =
+        int.tryParse((p['idEstado'] ?? p['id_estado'] ?? '').toString()) ?? -1;
 
     final estadoTexto = _estadoTexto(idEstado);
     final estadoColor = _estadoColor(idEstado);
@@ -406,9 +464,9 @@ class _TarjetaPersonaState extends State<_TarjetaPersona> {
 
     final colores = [
       const Color(0xFF0A8F4D),
-      const Color(0xFF3A7BD5),
-      const Color(0xFF8B5CF6),
-      const Color(0xFFE07B2A),
+      const Color(0xFF2563EB),
+      const Color(0xFF7C3AED),
+      const Color(0xFFD97706),
       const Color(0xFF0891B2),
     ];
 
@@ -419,146 +477,146 @@ class _TarjetaPersonaState extends State<_TarjetaPersona> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
         curve: Curves.easeOut,
-        margin: const EdgeInsets.only(bottom: 10),
-        child: ClipRRect(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.94),
           borderRadius: BorderRadius.circular(18),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.07),
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(
-                  color: _expandida
-                      ? colorAvatar.withOpacity(0.4)
-                      : Colors.white.withOpacity(0.1),
-                  width: 1.5,
+          border: Border.all(
+            color: _expandida
+                ? colorAvatar.withOpacity(0.32)
+                : Colors.white.withOpacity(0.72),
+            width: 1.4,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.16),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: colorAvatar.withOpacity(0.13),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: colorAvatar.withOpacity(0.28),
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      inicial,
+                      style: TextStyle(
+                        color: colorAvatar,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-              child: Column(
-                children: [
-                  Row(
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        width: 46,
-                        height: 46,
-                        decoration: BoxDecoration(
-                          color: colorAvatar.withOpacity(0.2),
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: colorAvatar.withOpacity(0.5),
-                            width: 1.5,
-                          ),
+                      Text(
+                        nombre,
+                        style: const TextStyle(
+                          color: Color(0xFF111827),
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900,
                         ),
-                        child: Center(
-                          child: Text(
-                            inicial,
-                            style: TextStyle(
-                              color: colorAvatar,
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              nombre,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              correo,
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.45),
-                                fontSize: 12,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
+                      const SizedBox(height: 3),
+                      Text(
+                        correo,
+                        style: const TextStyle(
+                          color: Color(0xFF6B7280),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
                         ),
-                      ),
-                      if (estadoTexto.isNotEmpty)
-                        Container(
-                          margin: const EdgeInsets.only(right: 8),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: estadoColor.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: estadoColor.withOpacity(0.35),
-                            ),
-                          ),
-                          child: Text(
-                            estadoTexto,
-                            style: TextStyle(
-                              color: estadoColor,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      AnimatedRotation(
-                        turns: _expandida ? 0.5 : 0,
-                        duration: const Duration(milliseconds: 250),
-                        child: const Icon(
-                          Icons.keyboard_arrow_down_rounded,
-                          color: Colors.white38,
-                          size: 22,
-                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
-                  AnimatedSize(
-                    duration: const Duration(milliseconds: 250),
-                    curve: Curves.easeOut,
-                    child: _expandida
-                        ? Column(
-                            children: [
-                              const SizedBox(height: 14),
-                              Divider(
-                                color: Colors.white.withOpacity(0.08),
-                                height: 1,
-                              ),
-                              const SizedBox(height: 14),
-                              _FilaDetalle(
-                                icono: Icons.phone_outlined,
-                                label: 'Celular',
-                                valor: celular,
-                              ),
-                              const SizedBox(height: 10),
-                              _FilaDetalle(
-                                icono: Icons.badge_outlined,
-                                label:
-                                    tipoDoc.isNotEmpty ? tipoDoc : 'Documento',
-                                valor: doc,
-                              ),
-                              const SizedBox(height: 10),
-                              _FilaDetalle(
-                                icono: Icons.email_outlined,
-                                label: 'Correo',
-                                valor: correo,
-                              ),
-                            ],
-                          )
-                        : const SizedBox.shrink(),
+                ),
+                if (estadoTexto.isNotEmpty)
+                  Container(
+                    margin: const EdgeInsets.only(right: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: estadoColor.withOpacity(0.13),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: estadoColor.withOpacity(0.28),
+                      ),
+                    ),
+                    child: Text(
+                      estadoTexto,
+                      style: TextStyle(
+                        color: estadoColor,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
                   ),
-                ],
-              ),
+                AnimatedRotation(
+                  turns: _expandida ? 0.5 : 0,
+                  duration: const Duration(milliseconds: 250),
+                  child: const Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    color: Color(0xFF6B7280),
+                    size: 22,
+                  ),
+                ),
+              ],
             ),
-          ),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeOut,
+              child: _expandida
+                  ? Column(
+                      children: [
+                        const SizedBox(height: 14),
+                        const Divider(
+                          color: Color(0xFFE5E7EB),
+                          height: 1,
+                        ),
+                        const SizedBox(height: 14),
+                        _FilaDetalle(
+                          icono: Icons.phone_outlined,
+                          label: 'Celular',
+                          valor: celular,
+                        ),
+                        const SizedBox(height: 10),
+                        _FilaDetalle(
+                          icono: Icons.badge_outlined,
+                          label: tipoDoc.isNotEmpty ? tipoDoc : 'Documento',
+                          valor: doc,
+                        ),
+                        const SizedBox(height: 10),
+                        _FilaDetalle(
+                          icono: Icons.email_outlined,
+                          label: 'Correo',
+                          valor: correo,
+                        ),
+                      ],
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          ],
         ),
       ),
     );
@@ -582,7 +640,7 @@ class _TarjetaPersonaState extends State<_TarjetaPersona> {
       case 5:
         return const Color(0xFFDC2626);
       default:
-        return Colors.white54;
+        return const Color(0xFF6B7280);
     }
   }
 }
@@ -602,22 +660,23 @@ class _FilaDetalle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icono, color: Colors.white30, size: 16),
+        Icon(icono, color: const Color(0xFF6B7280), size: 16),
         const SizedBox(width: 10),
         Text(
           '$label: ',
           style: const TextStyle(
-            color: Colors.white38,
+            color: Color(0xFF6B7280),
             fontSize: 13,
+            fontWeight: FontWeight.w600,
           ),
         ),
         Expanded(
           child: Text(
             valor,
             style: const TextStyle(
-              color: Colors.white70,
+              color: Color(0xFF111827),
               fontSize: 13,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w800,
             ),
             overflow: TextOverflow.ellipsis,
           ),

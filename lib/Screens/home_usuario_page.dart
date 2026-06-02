@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+
 import '../main.dart';
 import '../Repositories/notificacion_repository.dart';
 import '../Repositories/persona_repository.dart';
@@ -27,7 +28,7 @@ class _HomeUsuarioPageState extends State<HomeUsuarioPage>
   late List<Animation<double>> _fadeAnims;
   late List<Animation<Offset>> _slideAnims;
 
-  static const int _numCards = 3;
+  static const int _numCards = 4;
 
   @override
   void initState() {
@@ -39,8 +40,8 @@ class _HomeUsuarioPageState extends State<HomeUsuarioPage>
     );
 
     _fadeAnims = List.generate(_numCards, (i) {
-      final start = i * 0.15;
-      final end = (start + 0.6).clamp(0.0, 1.0);
+      final start = i * 0.13;
+      final end = (start + 0.60).clamp(0.0, 1.0);
       return CurvedAnimation(
         parent: _animCtrl,
         curve: Interval(start, end, curve: Curves.easeOut),
@@ -48,10 +49,10 @@ class _HomeUsuarioPageState extends State<HomeUsuarioPage>
     });
 
     _slideAnims = List.generate(_numCards, (i) {
-      final start = i * 0.15;
-      final end = (start + 0.6).clamp(0.0, 1.0);
+      final start = i * 0.13;
+      final end = (start + 0.60).clamp(0.0, 1.0);
       return Tween<Offset>(
-        begin: const Offset(0, 0.1),
+        begin: const Offset(0, 0.10),
         end: Offset.zero,
       ).animate(
         CurvedAnimation(
@@ -133,23 +134,22 @@ class _HomeUsuarioPageState extends State<HomeUsuarioPage>
             'assets/udea_bg.jpeg',
             fit: BoxFit.cover,
           ),
+          BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 1.2, sigmaY: 1.2),
+            child: const SizedBox.expand(),
+          ),
           Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
                 colors: [
-                  Color(0xBB000000),
-                  Color(0xCC021008),
-                  Color(0xEE011208),
+                  Colors.black.withOpacity(0.58),
+                  Colors.black.withOpacity(0.38),
+                  const Color(0xFF0A3D24).withOpacity(0.35),
                 ],
-                stops: [0.0, 0.5, 1.0],
               ),
             ),
-          ),
-          BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-            child: const SizedBox.expand(),
           ),
           SafeArea(
             child: Center(
@@ -174,9 +174,7 @@ class _HomeUsuarioPageState extends State<HomeUsuarioPage>
                       },
                       onCerrarSesion: _cerrarSesion,
                     ),
-
                     const SizedBox(height: 28),
-
                     FadeTransition(
                       opacity: _fadeAnims[0],
                       child: SlideTransition(
@@ -184,24 +182,20 @@ class _HomeUsuarioPageState extends State<HomeUsuarioPage>
                         child: _Saludo(nombre: _nombre),
                       ),
                     ),
-
                     const SizedBox(height: 28),
-
                     FadeTransition(
                       opacity: _fadeAnims[0],
                       child: const Text(
                         'QUÉ QUIERES HACER',
                         style: TextStyle(
-                          color: Color(0xFF0A8F4D),
+                          color: Color(0xFF9EF0C0),
                           fontSize: 10,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w900,
                           letterSpacing: 2.5,
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 12),
-
                     FadeTransition(
                       opacity: _fadeAnims[0],
                       child: SlideTransition(
@@ -211,6 +205,7 @@ class _HomeUsuarioPageState extends State<HomeUsuarioPage>
                           titulo: 'Buscar objeto perdido',
                           subtitulo: 'Revisa los objetos encontrados en campus',
                           colorIcono: const Color(0xFF0A8F4D),
+                          bgIcono: const Color(0xFFE1F5EE),
                           onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -220,9 +215,7 @@ class _HomeUsuarioPageState extends State<HomeUsuarioPage>
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 12),
-
                     FadeTransition(
                       opacity: _fadeAnims[1],
                       child: SlideTransition(
@@ -231,7 +224,8 @@ class _HomeUsuarioPageState extends State<HomeUsuarioPage>
                           icono: Icons.report_gmailerrorred_rounded,
                           titulo: 'Reportar pérdida',
                           subtitulo: 'Registra algo que hayas perdido en UdeA',
-                          colorIcono: const Color(0xFFE07B2A),
+                          colorIcono: const Color(0xFFD97706),
+                          bgIcono: const Color(0xFFFEF3C7),
                           onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -241,9 +235,7 @@ class _HomeUsuarioPageState extends State<HomeUsuarioPage>
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 12),
-
                     FadeTransition(
                       opacity: _fadeAnims[2],
                       child: SlideTransition(
@@ -252,7 +244,8 @@ class _HomeUsuarioPageState extends State<HomeUsuarioPage>
                           icono: Icons.assignment_outlined,
                           titulo: 'Mis solicitudes',
                           subtitulo: 'Consulta el estado de tus reclamos',
-                          colorIcono: const Color(0xFF3A7BD5),
+                          colorIcono: const Color(0xFF2563EB),
+                          bgIcono: const Color(0xFFDBEAFE),
                           onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -262,18 +255,17 @@ class _HomeUsuarioPageState extends State<HomeUsuarioPage>
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 12),
-
                     FadeTransition(
-                      opacity: _fadeAnims[2],
+                      opacity: _fadeAnims[3],
                       child: SlideTransition(
-                        position: _slideAnims[2],
+                        position: _slideAnims[3],
                         child: _TarjetaAccion(
                           icono: Icons.article_outlined,
                           titulo: 'Mis reportes',
                           subtitulo: 'Revisa y anula tus reportes activos',
-                          colorIcono: const Color(0xFF8A32B0),
+                          colorIcono: const Color(0xFF7C3AED),
+                          bgIcono: const Color(0xFFEDE9FE),
                           onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -283,30 +275,27 @@ class _HomeUsuarioPageState extends State<HomeUsuarioPage>
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 40),
-
-                    Center(
+                    const Center(
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
+                        children: [
                           Icon(
                             Icons.shield_outlined,
-                            color: Colors.white24,
+                            color: Colors.white70,
                             size: 12,
                           ),
                           SizedBox(width: 6),
                           Text(
                             'UdeA 2024 · Acceso seguro',
                             style: TextStyle(
-                              color: Colors.white24,
+                              color: Colors.white70,
                               fontSize: 11,
                             ),
                           ),
                         ],
                       ),
                     ),
-
                     const SizedBox(height: 20),
                   ],
                 ),
@@ -335,7 +324,10 @@ class _TopBar extends StatelessWidget {
     return Row(
       children: [
         const Expanded(
-          child: HeaderUdea(titulo: 'Objetos Perdidos'),
+          child: HeaderUdea(
+            titulo: 'Objetos Perdidos',
+            oscuro: true,
+          ),
         ),
         const SizedBox(width: 16),
         Stack(
@@ -347,13 +339,16 @@ class _TopBar extends StatelessWidget {
             ),
             if (noLeidas > 0)
               Positioned(
-                right: 6,
-                top: 6,
+                right: 4,
+                top: 4,
                 child: Container(
-                  width: 16,
-                  height: 16,
+                  constraints: const BoxConstraints(
+                    minWidth: 18,
+                    minHeight: 18,
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
                   decoration: const BoxDecoration(
-                    color: Colors.redAccent,
+                    color: Color(0xFFDC2626),
                     shape: BoxShape.circle,
                   ),
                   child: Center(
@@ -362,7 +357,7 @@ class _TopBar extends StatelessWidget {
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 9,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w900,
                       ),
                     ),
                   ),
@@ -399,7 +394,7 @@ class _Saludo extends StatelessWidget {
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 30,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w900,
                   height: 1.1,
                 ),
               ),
@@ -412,9 +407,9 @@ class _Saludo extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         const Text(
-          'Busca, reporta o entrega objetos\nperdidos en el campus.',
+          'Busca, reporta o entrega objetos perdidos en el campus.',
           style: TextStyle(
-            color: Colors.white54,
+            color: Colors.white70,
             fontSize: 14,
             height: 1.5,
           ),
@@ -429,6 +424,7 @@ class _TarjetaAccion extends StatefulWidget {
   final String titulo;
   final String subtitulo;
   final Color colorIcono;
+  final Color bgIcono;
   final VoidCallback onTap;
 
   const _TarjetaAccion({
@@ -436,6 +432,7 @@ class _TarjetaAccion extends StatefulWidget {
     required this.titulo,
     required this.subtitulo,
     required this.colorIcono,
+    required this.bgIcono,
     required this.onTap,
   });
 
@@ -454,81 +451,83 @@ class _TarjetaAccionState extends State<_TarjetaAccion> {
       onTapCancel: () => setState(() => _presionado = false),
       onTap: widget.onTap,
       child: AnimatedScale(
-        scale: _presionado ? 0.97 : 1.0,
+        scale: _presionado ? 0.98 : 1.0,
         duration: const Duration(milliseconds: 100),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.07),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: widget.colorIcono.withOpacity(0.3),
-                  width: 1.5,
+        child: Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.94),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: widget.colorIcono.withOpacity(0.22),
+              width: 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.20),
+                blurRadius: 22,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: widget.bgIcono,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: widget.colorIcono.withOpacity(0.20),
+                  ),
+                ),
+                child: Icon(
+                  widget.icono,
+                  color: widget.colorIcono,
+                  size: 26,
                 ),
               ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 52,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      color: widget.colorIcono.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: widget.colorIcono.withOpacity(0.25),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.titulo,
+                      style: const TextStyle(
+                        color: Color(0xFF111827),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
                       ),
                     ),
-                    child: Icon(
-                      widget.icono,
-                      color: widget.colorIcono,
-                      size: 26,
+                    const SizedBox(height: 3),
+                    Text(
+                      widget.subtitulo,
+                      style: const TextStyle(
+                        color: Color(0xFF4B5563),
+                        fontSize: 12,
+                        height: 1.4,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.titulo,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          widget.subtitulo,
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.5),
-                            fontSize: 12,
-                            height: 1.4,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: widget.colorIcono.withOpacity(0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.arrow_forward_rounded,
-                      color: widget.colorIcono,
-                      size: 16,
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: widget.bgIcono,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.arrow_forward_rounded,
+                  color: widget.colorIcono,
+                  size: 16,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -558,15 +557,22 @@ class _BtnIcono extends StatelessWidget {
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.06),
+            color: Colors.white.withOpacity(0.94),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: Colors.white.withOpacity(0.08),
+              color: Colors.white.withOpacity(0.75),
             ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.18),
+                blurRadius: 16,
+                offset: const Offset(0, 8),
+              ),
+            ],
           ),
           child: Icon(
             icono,
-            color: Colors.white70,
+            color: const Color(0xFF111827),
             size: 20,
           ),
         ),

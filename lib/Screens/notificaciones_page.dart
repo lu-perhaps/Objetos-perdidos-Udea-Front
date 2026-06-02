@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+
 import '../constants/app_colors.dart';
 import '../Repositories/notificacion_repository.dart';
 import '../main.dart';
@@ -23,15 +24,21 @@ class _NotificacionesPageState extends State<NotificacionesPage>
   @override
   void initState() {
     super.initState();
+
     _animCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600),
     );
+
     _fadeAnim = CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut);
+
     _slideAnim = Tween<Offset>(
       begin: const Offset(0, 0.05),
       end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut));
+    ).animate(
+      CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut),
+    );
+
     _animCtrl.forward();
     _cargarNotificaciones();
   }
@@ -44,6 +51,7 @@ class _NotificacionesPageState extends State<NotificacionesPage>
 
   Future<void> _cargarNotificaciones() async {
     final user = supabase.auth.currentUser;
+
     if (user == null || user.email == null) {
       if (mounted) setState(() => _cargando = false);
       return;
@@ -61,6 +69,11 @@ class _NotificacionesPageState extends State<NotificacionesPage>
     }
   }
 
+  Future<void> _refrescar() async {
+    setState(() => _cargando = true);
+    await _cargarNotificaciones();
+  }
+
   Future<void> _marcarComoLeidaYRecargar(int idNotificacion) async {
     await NotificacionRepository.marcarComoLeida(
       idNotificacion: idNotificacion,
@@ -71,8 +84,10 @@ class _NotificacionesPageState extends State<NotificacionesPage>
   Future<void> _eliminarNotificacion(int idNotificacion) async {
     final success =
         await NotificacionRepository.eliminarNotificacion(idNotificacion);
+
     if (success && mounted) {
       await _cargarNotificaciones();
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Notificación eliminada')),
       );
@@ -81,6 +96,7 @@ class _NotificacionesPageState extends State<NotificacionesPage>
 
   Future<void> _borrarTodas() async {
     final user = supabase.auth.currentUser;
+
     if (user == null || user.email == null) return;
 
     final confirmado = await showDialog<bool>(
@@ -98,9 +114,12 @@ class _NotificacionesPageState extends State<NotificacionesPage>
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
+              backgroundColor: const Color(0xFFDC2626),
             ),
-            child: const Text('Eliminar'),
+            child: const Text(
+              'Eliminar',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -114,6 +133,7 @@ class _NotificacionesPageState extends State<NotificacionesPage>
 
     if (success && mounted) {
       await _cargarNotificaciones();
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Todas las notificaciones eliminadas')),
       );
@@ -122,16 +142,35 @@ class _NotificacionesPageState extends State<NotificacionesPage>
 
   String _formatearFecha(String? fechaStr) {
     if (fechaStr == null) return '';
+
     final fecha = DateTime.tryParse(fechaStr);
     if (fecha == null) return '';
+
     final local = fecha.toLocal();
+
     final meses = [
-      '', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
-      'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
+      '',
+      'Ene',
+      'Feb',
+      'Mar',
+      'Abr',
+      'May',
+      'Jun',
+      'Jul',
+      'Ago',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dic',
     ];
+
     return '${local.day} ${meses[local.month]} · '
         '${local.hour.toString().padLeft(2, '0')}:'
         '${local.minute.toString().padLeft(2, '0')}';
+  }
+
+  int get _noLeidas {
+    return _notificaciones.where((n) => n['leida'] != true).length;
   }
 
   @override
@@ -143,84 +182,61 @@ class _NotificacionesPageState extends State<NotificacionesPage>
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // ── Fondo ──────────────────────────────────────────────────
           Image.asset('assets/udea_bg.jpeg', fit: BoxFit.cover),
+          BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 1.2, sigmaY: 1.2),
+            child: const SizedBox.expand(),
+          ),
           Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xBB000000), Color(0xEE011208)],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: [
+                  Colors.black.withOpacity(0.58),
+                  Colors.black.withOpacity(0.38),
+                  const Color(0xFF0A3D24).withOpacity(0.35),
+                ],
               ),
             ),
           ),
-          BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-            child: const SizedBox.expand(),
-          ),
-
-          // ── Contenido ───────────────────────────────────────────────
           SafeArea(
             child: FadeTransition(
               opacity: _fadeAnim,
               child: SlideTransition(
                 position: _slideAnim,
-                child: Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: isWide ? size.width * 0.22 : 20,
-                    vertical: 16,
-                  ),
-                  child: Column(
-                    children: [
-                      // ── Header ─────────────────────────────────────
-                      _HeaderPage(titulo: 'Notificaciones'),
-
-                      const SizedBox(height: 20),
-
-                      // ── Contador y botón borrar todas ──────────────
-                      if (!_cargando && _notificaciones.isNotEmpty)
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 5),
-                                decoration: BoxDecoration(
-                                  color: AppColors.verde.withOpacity(0.15),
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(
-                                    color: AppColors.verde.withOpacity(0.3),
-                                  ),
-                                ),
-                                child: Text(
-                                  '${_notificaciones.length} notificaciones',
-                                  style: const TextStyle(
-                                    color: AppColors.verde,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: isWide ? 560 : 520,
+                    ),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isWide ? 24 : 22,
+                        vertical: 18,
+                      ),
+                      child: Column(
+                        children: [
+                          _HeaderPage(
+                            titulo: 'Notificaciones',
+                            subtitulo: 'Alertas sobre tus objetos y reportes',
+                            total: _notificaciones.length,
+                            noLeidas: _noLeidas,
+                            onRefresh: _refrescar,
+                            onDeleteAll:
+                                _notificaciones.isEmpty ? null : _borrarTodas,
+                          ),
+                          const SizedBox(height: 18),
+                          Expanded(
+                            child: RefreshIndicator(
+                              color: AppColors.verde,
+                              onRefresh: _refrescar,
+                              child: _buildContenido(),
                             ),
-                            const SizedBox(width: 8),
-                            IconButton(
-                              onPressed: _borrarTodas,
-                              icon: const Icon(
-                                Icons.delete_sweep_outlined,
-                                color: Colors.red,
-                                size: 20,
-                              ),
-                              tooltip: 'Borrar todas',
-                            ),
-                          ],
-                        ),
-
-                      if (!_cargando && _notificaciones.isNotEmpty)
-                        const SizedBox(height: 14),
-
-                      // ── Lista ───────────────────────────────────────
-                      Expanded(child: _buildContenido()),
-                    ],
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -242,64 +258,148 @@ class _NotificacionesPageState extends State<NotificacionesPage>
     }
 
     if (_notificaciones.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.06),
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white.withOpacity(0.1)),
-              ),
-              child: const Icon(
-                Icons.notifications_off_outlined,
-                color: Colors.white24,
-                size: 36,
-              ),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'Sin notificaciones',
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Aquí aparecerán tus alertas\nsobre objetos y solicitudes.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white30, fontSize: 13, height: 1.5),
-            ),
-          ],
-        ),
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: const [
+          SizedBox(height: 100),
+          _EstadoVacio(),
+        ],
       );
     }
 
     return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
       itemCount: _notificaciones.length,
       itemBuilder: (_, i) {
         final n = _notificaciones[i];
         final leida = n['leida'] == true;
+
+        final idNotificacion = int.tryParse(
+          n['id']?.toString() ?? '',
+        );
+
         return _TarjetaNotificacion(
           notificacion: n,
           leida: leida,
           fecha: _formatearFecha(n['fechaEnvio']),
-          onTap: leida
+          onTap: leida || idNotificacion == null
               ? null
-              : () => _marcarComoLeidaYRecargar(n['id']),
-          onDelete: () => _eliminarNotificacion(n['id']),
+              : () => _marcarComoLeidaYRecargar(idNotificacion),
+          onDelete: idNotificacion == null
+              ? null
+              : () => _eliminarNotificacion(idNotificacion),
         );
       },
     );
   }
 }
 
-// ── Tarjeta notificación ──────────────────────────────────────────────────────
+class _HeaderPage extends StatelessWidget {
+  final String titulo;
+  final String subtitulo;
+  final int total;
+  final int noLeidas;
+  final Future<void> Function() onRefresh;
+  final VoidCallback? onDeleteAll;
+
+  const _HeaderPage({
+    required this.titulo,
+    required this.subtitulo,
+    required this.total,
+    required this.noLeidas,
+    required this.onRefresh,
+    required this.onDeleteAll,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _WhiteCard(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      child: Row(
+        children: [
+          _HeaderButton(
+            icono: Icons.arrow_back_rounded,
+            onTap: () => Navigator.pop(context),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'OBJETOS PERDIDOS',
+                  style: TextStyle(
+                    color: Color(0xFF0A8F4D),
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 2,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  titulo,
+                  style: const TextStyle(
+                    color: Color(0xFF111827),
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                Text(
+                  subtitulo,
+                  style: const TextStyle(
+                    color: Color(0xFF6B7280),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (total > 0) ...[
+            Container(
+              margin: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+              decoration: BoxDecoration(
+                color: noLeidas > 0
+                    ? const Color(0xFFFEE2E2)
+                    : const Color(0xFFE1F5EE),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(
+                  color: noLeidas > 0
+                      ? const Color(0xFFDC2626).withOpacity(0.22)
+                      : const Color(0xFF0A8F4D).withOpacity(0.22),
+                ),
+              ),
+              child: Text(
+                noLeidas > 0 ? '$noLeidas nueva(s)' : '$total',
+                style: TextStyle(
+                  color: noLeidas > 0
+                      ? const Color(0xFFDC2626)
+                      : const Color(0xFF065F46),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ],
+          _HeaderButton(
+            icono: Icons.refresh_rounded,
+            onTap: () async => onRefresh(),
+          ),
+          if (onDeleteAll != null) ...[
+            const SizedBox(width: 8),
+            _HeaderButton(
+              icono: Icons.delete_sweep_outlined,
+              color: const Color(0xFFDC2626),
+              onTap: onDeleteAll!,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class _TarjetaNotificacion extends StatelessWidget {
   final Map<String, dynamic> notificacion;
   final bool leida;
@@ -317,183 +417,285 @@ class _TarjetaNotificacion extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color colorAccent =
-        leida ? Colors.white24 : AppColors.verde;
+    final Color colorAccent = leida ? const Color(0xFF6B7280) : AppColors.verde;
+
+    final mensaje = (notificacion['mensaje'] ?? 'Sin mensaje').toString();
+
+    final mensajeAdicional = (notificacion['mensajeAdicional'] ??
+            notificacion['mensaje_adicional'] ??
+            '')
+        .toString()
+        .trim();
 
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(18),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-            child: Container(
-              padding: const EdgeInsets.all(16),
+      child: _WhiteCard(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        borderColor: colorAccent.withOpacity(leida ? 0.16 : 0.28),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 44,
+              height: 44,
               decoration: BoxDecoration(
-                color: leida
-                    ? Colors.white.withOpacity(0.05)
-                    : AppColors.verde.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(18),
+                color: colorAccent.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(13),
                 border: Border.all(
-                  color: colorAccent.withOpacity(leida ? 0.15 : 0.35),
-                  width: leida ? 1 : 1.5,
+                  color: colorAccent.withOpacity(0.25),
                 ),
               ),
-              child: Row(
+              child: Icon(
+                leida
+                    ? Icons.notifications_outlined
+                    : Icons.notifications_active_rounded,
+                color: colorAccent,
+                size: 21,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ── Ícono ─────────────────────────────────────────
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: colorAccent.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: colorAccent.withOpacity(0.25),
+                  Row(
+                    children: [
+                      if (!leida) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.verde.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: AppColors.verde.withOpacity(0.22),
+                            ),
+                          ),
+                          child: const Text(
+                            'Nueva',
+                            style: TextStyle(
+                              color: AppColors.verde,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      Expanded(
+                        child: Text(
+                          fecha,
+                          textAlign: TextAlign.right,
+                          style: const TextStyle(
+                            color: Color(0xFF9CA3AF),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                       ),
-                    ),
-                    child: Icon(
-                      leida
-                          ? Icons.notifications_outlined
-                          : Icons.notifications_active_rounded,
-                      color: colorAccent,
-                      size: 20,
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    mensaje,
+                    style: TextStyle(
+                      color: const Color(0xFF111827),
+                      fontSize: 14,
+                      fontWeight: leida ? FontWeight.w700 : FontWeight.w900,
+                      height: 1.4,
                     ),
                   ),
-
-                  const SizedBox(width: 14),
-
-                  // ── Texto y acciones ──────────────────────────────
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                notificacion['mensaje'] ?? 'Sin mensaje',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                  fontWeight: leida
-                                      ? FontWeight.w400
-                                      : FontWeight.w600,
-                                  height: 1.4,
-                                ),
-                              ),
-                            ),
-                            if (!leida)
-                              Container(
-                                margin: const EdgeInsets.only(left: 8),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: AppColors.verde,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Text(
-                                  'Nueva',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                          ],
+                  if (mensajeAdicional.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(11),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE1F5EE),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: AppColors.verde.withOpacity(0.20),
                         ),
-                        const SizedBox(height: 6),
-                        Row(
-                          mainAxisAlignment:
-                              MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              fecha,
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(
+                            Icons.message_outlined,
+                            color: AppColors.verde,
+                            size: 15,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              mensajeAdicional,
                               style: const TextStyle(
-                                color: Colors.white38,
-                                fontSize: 11,
+                                color: Color(0xFF065F46),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                height: 1.35,
                               ),
                             ),
-                            GestureDetector(
-                              onTap: onDelete,
-                              child: Icon(
-                                Icons.close_rounded,
-                                color: Colors.white38,
-                                size: 18,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                          ),
+                        ],
+                      ),
                     ),
+                  ],
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      if (!leida)
+                        const Text(
+                          'Toca para marcar como leída',
+                          style: TextStyle(
+                            color: Color(0xFF6B7280),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      const Spacer(),
+                      InkWell(
+                        onTap: onDelete,
+                        borderRadius: BorderRadius.circular(999),
+                        child: Container(
+                          width: 30,
+                          height: 30,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF3F4F6),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: const Color(0xFFE5E7EB),
+                            ),
+                          ),
+                          child: const Icon(
+                            Icons.close_rounded,
+                            color: Color(0xFF6B7280),
+                            size: 17,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-          ),
+          ],
         ),
       ),
     );
   }
 }
 
-// ── Header reutilizable ───────────────────────────────────────────────────────
-class _HeaderPage extends StatelessWidget {
-  final String titulo;
-  final String? breadcrumb;
-
-  const _HeaderPage({required this.titulo, this.breadcrumb});
+class _EstadoVacio extends StatelessWidget {
+  const _EstadoVacio();
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        InkWell(
-          onTap: () => Navigator.pop(context),
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.07),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white.withOpacity(0.1)),
-            ),
-            child: const Icon(
-              Icons.arrow_back_rounded,
-              color: Colors.white,
-              size: 18,
+    return _WhiteCard(
+      padding: const EdgeInsets.all(28),
+      child: const Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.notifications_off_outlined,
+            color: Color(0xFF0A8F4D),
+            size: 44,
+          ),
+          SizedBox(height: 14),
+          Text(
+            'Sin notificaciones',
+            style: TextStyle(
+              color: Color(0xFF111827),
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
             ),
           ),
-        ),
-        const SizedBox(width: 14),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (breadcrumb != null)
-              Text(
-                breadcrumb!,
-                style: const TextStyle(
-                  color: Color(0xFF0A8F4D),
-                  fontSize: 9,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 2,
-                ),
-              ),
-            Text(
-              titulo,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-              ),
+          SizedBox(height: 6),
+          Text(
+            'Aquí aparecerán tus alertas sobre objetos, reportes y solicitudes.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Color(0xFF6B7280),
+              fontSize: 13,
+              height: 1.45,
             ),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WhiteCard extends StatelessWidget {
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+  final EdgeInsetsGeometry? margin;
+  final Color? borderColor;
+
+  const _WhiteCard({
+    required this.child,
+    required this.padding,
+    this.margin,
+    this.borderColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: margin,
+      padding: padding,
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.94),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: borderColor ?? Colors.white.withOpacity(0.75),
         ),
-      ],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.18),
+            blurRadius: 22,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+}
+
+class _HeaderButton extends StatelessWidget {
+  final IconData icono;
+  final VoidCallback onTap;
+  final Color color;
+
+  const _HeaderButton({
+    required this.icono,
+    required this.onTap,
+    this.color = const Color(0xFF111827),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        width: 38,
+        height: 38,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF3F4F6),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+        ),
+        child: Icon(
+          icono,
+          color: color,
+          size: 18,
+        ),
+      ),
     );
   }
 }

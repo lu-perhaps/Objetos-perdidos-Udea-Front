@@ -1,8 +1,10 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+
 import '../Constants/app_colors.dart';
 import '../Repositories/persona_repository.dart';
 import '../main.dart';
+import 'auth_gate.dart';
 import 'header_udea.dart';
 
 class CompletarPerfilPage extends StatefulWidget {
@@ -17,8 +19,10 @@ class _CompletarPerfilPageState extends State<CompletarPerfilPage>
   final _nombreCtrl = TextEditingController();
   final _celularCtrl = TextEditingController();
   final _documentoCtrl = TextEditingController();
+
   int? _idTipoDocumento;
   List<Map<String, dynamic>> _tiposDocumento = [];
+
   bool _guardando = false;
   bool _cargandoTipos = true;
 
@@ -29,15 +33,19 @@ class _CompletarPerfilPageState extends State<CompletarPerfilPage>
   @override
   void initState() {
     super.initState();
+
     _animCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
+
     _fadeAnim = CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut);
+
     _slideAnim = Tween<Offset>(
       begin: const Offset(0, 0.06),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut));
+
     _animCtrl.forward();
     _cargarTiposDocumento();
   }
@@ -53,14 +61,25 @@ class _CompletarPerfilPageState extends State<CompletarPerfilPage>
 
   Future<void> _cargarTiposDocumento() async {
     try {
-      final data =
-          await supabase.from('tbl_tipo_documento').select('id, nombre');
+      final data = await supabase
+          .from('tbl_tipo_documento')
+          .select('id, nombre')
+          .order('id');
+
+      if (!mounted) return;
+
       setState(() {
         _tiposDocumento = List<Map<String, dynamic>>.from(data);
         _cargandoTipos = false;
       });
     } catch (e) {
+      debugPrint('ERROR cargar tipos documento: $e');
+      if (!mounted) return;
       setState(() => _cargandoTipos = false);
+      _mostrarSnack(
+        'No se pudieron cargar los tipos de documento.',
+        esError: true,
+      );
     }
   }
 
@@ -90,19 +109,26 @@ class _CompletarPerfilPageState extends State<CompletarPerfilPage>
     setState(() => _guardando = false);
 
     if (ok) {
-      Navigator.of(context).pushNamedAndRemoveUntil('/', (_) => false);
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const AuthGate()),
+        (_) => false,
+      );
     } else {
       _mostrarSnack('Error al guardar. Intenta de nuevo.', esError: true);
     }
   }
 
   void _mostrarSnack(String mensaje, {bool esError = false}) {
+    if (!mounted) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
           children: [
             Icon(
-              esError ? Icons.error_outline_rounded : Icons.check_circle_outline,
+              esError
+                  ? Icons.error_outline_rounded
+                  : Icons.check_circle_outline,
               color: Colors.white,
               size: 18,
             ),
@@ -121,41 +147,35 @@ class _CompletarPerfilPageState extends State<CompletarPerfilPage>
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final isWide = size.width > 600;
+    final isWide = size.width > 760;
 
     return Scaffold(
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // ── Fondo UdeA ─────────────────────────────────────────────
           Image.asset('assets/udea_bg.jpeg', fit: BoxFit.cover),
-
-          // ── Overlay gradiente ───────────────────────────────────────
+          BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 1.3, sigmaY: 1.3),
+            child: const SizedBox.expand(),
+          ),
           Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
                 colors: [
-                  Color(0xBB000000),
-                  Color(0xDD011208),
+                  Colors.black.withOpacity(0.56),
+                  Colors.black.withOpacity(0.38),
+                  const Color(0xFF0A3D24).withOpacity(0.32),
                 ],
               ),
             ),
           ),
-
-          // ── Blur ────────────────────────────────────────────────────
-          BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
-            child: const SizedBox.expand(),
-          ),
-
-          // ── Contenido ───────────────────────────────────────────────
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
                 padding: EdgeInsets.symmetric(
-                  horizontal: isWide ? size.width * 0.28 : 24,
+                  horizontal: isWide ? size.width * 0.30 : 24,
                   vertical: 32,
                 ),
                 child: FadeTransition(
@@ -165,22 +185,18 @@ class _CompletarPerfilPageState extends State<CompletarPerfilPage>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // ── Header con logo ──────────────────────────
-                        Row(
-                          children: const [
-                            Expanded(child: HeaderUdea(titulo: 'Objetos Perdidos')),
-                          ],
+                        const HeaderUdeaAdmin(
+                          titulo: 'Objetos Perdidos',
+                          subtitulo: 'Perfil institucional',
+                          oscuro: true,
                         ),
-
-                        const SizedBox(height: 32),
-
-                        // ── Título ───────────────────────────────────
+                        const SizedBox(height: 34),
                         const Text(
                           'Completa tu perfil',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 30,
-                            fontWeight: FontWeight.w800,
+                            fontSize: 31,
+                            fontWeight: FontWeight.w900,
                             height: 1.1,
                           ),
                         ),
@@ -188,110 +204,94 @@ class _CompletarPerfilPageState extends State<CompletarPerfilPage>
                         const Text(
                           'Necesitamos estos datos para procesar tus solicitudes de reclamo.',
                           style: TextStyle(
-                            color: Colors.white60,
+                            color: Colors.white70,
                             fontSize: 14,
                             height: 1.5,
                           ),
                         ),
-
                         const SizedBox(height: 28),
-
-                        // ── Card glassmorphism con formulario ─────────
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(24),
-                          child: BackdropFilter(
-                            filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-                            child: Container(
-                              padding: const EdgeInsets.all(24),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.07),
-                                borderRadius: BorderRadius.circular(24),
-                                border: Border.all(
-                                  color: Colors.white.withOpacity(0.12),
-                                ),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // ── Nombre ───────────────────────
-                                  _LabelCampo(texto: 'NOMBRE COMPLETO'),
-                                  const SizedBox(height: 6),
-                                  _Campo(
-                                    ctrl: _nombreCtrl,
-                                    hint: 'Ej. Juan Pérez García',
-                                    icono: Icons.person_outline_rounded,
-                                    tipo: TextInputType.name,
-                                  ),
-
-                                  const SizedBox(height: 18),
-
-                                  // ── Celular ──────────────────────
-                                  _LabelCampo(texto: 'CELULAR'),
-                                  const SizedBox(height: 6),
-                                  _Campo(
-                                    ctrl: _celularCtrl,
-                                    hint: '300 000 0000',
-                                    icono: Icons.phone_outlined,
-                                    tipo: TextInputType.phone,
-                                  ),
-
-                                  const SizedBox(height: 18),
-
-                                  // ── Tipo documento ────────────────
-                                  _LabelCampo(texto: 'TIPO DE DOCUMENTO'),
-                                  const SizedBox(height: 6),
-                                  _cargandoTipos
-                                      ? const Center(
-                                          child: Padding(
-                                            padding: EdgeInsets.all(12),
-                                            child: CircularProgressIndicator(
-                                              color: AppColors.verde,
-                                              strokeWidth: 2,
-                                            ),
-                                          ),
-                                        )
-                                      : _DropdownDocumento(
-                                          value: _idTipoDocumento,
-                                          items: _tiposDocumento,
-                                          onChanged: (v) => setState(
-                                              () => _idTipoDocumento = v),
-                                        ),
-
-                                  const SizedBox(height: 18),
-
-                                  // ── Número documento ──────────────
-                                  _LabelCampo(texto: 'NÚMERO DE DOCUMENTO'),
-                                  const SizedBox(height: 6),
-                                  _Campo(
-                                    ctrl: _documentoCtrl,
-                                    hint: '1 000 000 000',
-                                    icono: Icons.badge_outlined,
-                                    tipo: TextInputType.number,
-                                  ),
-                                ],
-                              ),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.94),
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.75),
                             ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.22),
+                                blurRadius: 28,
+                                offset: const Offset(0, 16),
+                              ),
+                            ],
+                          ),
+                          padding: const EdgeInsets.all(24),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const _LabelCampo(texto: 'NOMBRE COMPLETO'),
+                              const SizedBox(height: 6),
+                              _Campo(
+                                ctrl: _nombreCtrl,
+                                hint: 'Ej. Juan Pérez García',
+                                icono: Icons.person_outline_rounded,
+                                tipo: TextInputType.name,
+                              ),
+                              const SizedBox(height: 20),
+                              const _LabelCampo(texto: 'CELULAR'),
+                              const SizedBox(height: 6),
+                              _Campo(
+                                ctrl: _celularCtrl,
+                                hint: '300 000 0000',
+                                icono: Icons.phone_outlined,
+                                tipo: TextInputType.phone,
+                              ),
+                              const SizedBox(height: 20),
+                              const _LabelCampo(texto: 'TIPO DE DOCUMENTO'),
+                              const SizedBox(height: 6),
+                              _cargandoTipos
+                                  ? const Padding(
+                                      padding: EdgeInsets.all(12),
+                                      child: Center(
+                                        child: CircularProgressIndicator(
+                                          color: Color(0xFF0A8F4D),
+                                          strokeWidth: 2,
+                                        ),
+                                      ),
+                                    )
+                                  : _DropdownDocumento(
+                                      value: _idTipoDocumento,
+                                      items: _tiposDocumento,
+                                      onChanged: (v) => setState(
+                                        () => _idTipoDocumento = v,
+                                      ),
+                                    ),
+                              const SizedBox(height: 20),
+                              const _LabelCampo(texto: 'NÚMERO DE DOCUMENTO'),
+                              const SizedBox(height: 6),
+                              _Campo(
+                                ctrl: _documentoCtrl,
+                                hint: '1 000 000 000',
+                                icono: Icons.badge_outlined,
+                                tipo: TextInputType.number,
+                              ),
+                            ],
                           ),
                         ),
-
                         const SizedBox(height: 24),
-
-                        // ── Botón guardar ────────────────────────────
                         SizedBox(
                           width: double.infinity,
                           height: 54,
                           child: ElevatedButton(
                             onPressed: _guardando ? null : _guardar,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.verde,
+                              backgroundColor: const Color(0xFF0A8F4D),
                               disabledBackgroundColor:
-                                  AppColors.verde.withOpacity(0.5),
+                                  const Color(0xFF0A8F4D).withOpacity(0.45),
                               elevation: 0,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16),
                               ),
-                              shadowColor:
-                                  AppColors.verde.withOpacity(0.4),
                             ),
                             child: _guardando
                                 ? const SizedBox(
@@ -310,7 +310,7 @@ class _CompletarPerfilPageState extends State<CompletarPerfilPage>
                                         style: TextStyle(
                                           color: Colors.white,
                                           fontSize: 16,
-                                          fontWeight: FontWeight.w700,
+                                          fontWeight: FontWeight.w900,
                                         ),
                                       ),
                                       SizedBox(width: 8),
@@ -323,23 +323,20 @@ class _CompletarPerfilPageState extends State<CompletarPerfilPage>
                                   ),
                           ),
                         ),
-
                         const SizedBox(height: 16),
-
-                        // ── Nota seguridad ───────────────────────────
-                        Row(
+                        const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(
                               Icons.lock_outline_rounded,
-                              color: Colors.white38,
+                              color: Colors.white70,
                               size: 13,
                             ),
-                            const SizedBox(width: 6),
-                            const Text(
+                            SizedBox(width: 6),
+                            Text(
                               'Tus datos están protegidos por UdeA',
                               style: TextStyle(
-                                color: Colors.white38,
+                                color: Colors.white70,
                                 fontSize: 12,
                               ),
                             ),
@@ -358,10 +355,9 @@ class _CompletarPerfilPageState extends State<CompletarPerfilPage>
   }
 }
 
-// ── Widgets auxiliares ────────────────────────────────────────────────────────
-
 class _LabelCampo extends StatelessWidget {
   final String texto;
+
   const _LabelCampo({required this.texto});
 
   @override
@@ -371,7 +367,7 @@ class _LabelCampo extends StatelessWidget {
       style: const TextStyle(
         color: Color(0xFF0A8F4D),
         fontSize: 10,
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w900,
         letterSpacing: 1.5,
       ),
     );
@@ -396,27 +392,30 @@ class _Campo extends StatelessWidget {
     return TextField(
       controller: ctrl,
       keyboardType: tipo,
-      style: const TextStyle(color: Colors.white, fontSize: 15),
-      cursorColor: AppColors.verde,
+      style: const TextStyle(
+        color: Color(0xFF111827),
+        fontSize: 15,
+      ),
+      cursorColor: const Color(0xFF0A8F4D),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: TextStyle(color: Colors.white.withOpacity(0.25)),
-        prefixIcon: Icon(icono, color: Colors.white38, size: 20),
+        hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
+        prefixIcon: Icon(icono, color: const Color(0xFF6B7280), size: 20),
         filled: true,
-        fillColor: Colors.white.withOpacity(0.06),
+        fillColor: const Color(0xFFF9FAFB),
         contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppColors.verde, width: 1.5),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFF0A8F4D), width: 1.5),
         ),
       ),
     );
@@ -436,29 +435,40 @@ class _DropdownDocumento extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final validValue = items.any(
+      (item) => int.tryParse(item['id'].toString()) == value,
+    )
+        ? value
+        : null;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
+        color: const Color(0xFFF9FAFB),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<int>(
-          value: value,
-          dropdownColor: const Color(0xFF0D2A1A),
-          style: const TextStyle(color: Colors.white, fontSize: 15),
+          value: validValue,
+          dropdownColor: Colors.white,
+          style: const TextStyle(
+            color: Color(0xFF111827),
+            fontSize: 15,
+          ),
           isExpanded: true,
-          iconEnabledColor: Colors.white54,
-          hint: Text(
+          iconEnabledColor: const Color(0xFF6B7280),
+          hint: const Text(
             'Selecciona un tipo',
-            style: TextStyle(color: Colors.white.withOpacity(0.25)),
+            style: TextStyle(color: Color(0xFF9CA3AF)),
           ),
           items: items
-              .map((t) => DropdownMenuItem<int>(
-                    value: t['id'] as int,
-                    child: Text(t['nombre'].toString()),
-                  ))
+              .map(
+                (t) => DropdownMenuItem<int>(
+                  value: int.tryParse(t['id'].toString()),
+                  child: Text(t['nombre'].toString()),
+                ),
+              )
               .toList(),
           onChanged: onChanged,
         ),

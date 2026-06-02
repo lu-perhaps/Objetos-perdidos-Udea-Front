@@ -27,7 +27,7 @@ class _MisSolicitudesPageState extends State<MisSolicitudesPage>
 
     _animCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 650),
     );
 
     _fadeAnim = CurvedAnimation(
@@ -81,6 +81,7 @@ class _MisSolicitudesPageState extends State<MisSolicitudesPage>
     if (mounted) {
       setState(() => _cargando = true);
     }
+
     await _cargarSolicitudes();
   }
 
@@ -95,42 +96,50 @@ class _MisSolicitudesPageState extends State<MisSolicitudesPage>
 
   Color _estadoColor(int estado) {
     if (estado == Estados.solicitudPendiente) {
-      return const Color(0xFFE07B2A);
+      return const Color(0xFFD97706);
     }
+
     if (estado == Estados.solicitudAprobada) {
       return const Color(0xFF0A8F4D);
     }
+
     if (estado == Estados.solicitudRechazada) {
       return const Color(0xFFDC2626);
     }
+
     if (estado == Estados.solicitudAnulada) {
-      return const Color(0xFF9CA3AF);
+      return const Color(0xFF6B7280);
     }
+
     if (estado == Estados.solicitudEntregada) {
       return const Color(0xFF2563EB);
     }
 
-    return Colors.grey;
+    return const Color(0xFF6B7280);
   }
 
   IconData _estadoIcono(int estado) {
     if (estado == Estados.solicitudPendiente) {
       return Icons.hourglass_top_rounded;
     }
+
     if (estado == Estados.solicitudAprobada) {
       return Icons.check_circle_outline_rounded;
     }
+
     if (estado == Estados.solicitudRechazada) {
       return Icons.cancel_outlined;
     }
+
     if (estado == Estados.solicitudAnulada) {
       return Icons.block_rounded;
     }
+
     if (estado == Estados.solicitudEntregada) {
       return Icons.inventory_2_outlined;
     }
 
-    return Icons.help_outline;
+    return Icons.help_outline_rounded;
   }
 
   @override
@@ -146,71 +155,57 @@ class _MisSolicitudesPageState extends State<MisSolicitudesPage>
             'assets/udea_bg.jpeg',
             fit: BoxFit.cover,
           ),
+          BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 1.2, sigmaY: 1.2),
+            child: const SizedBox.expand(),
+          ),
           Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
                 colors: [
-                  Color(0xBB000000),
-                  Color(0xEE011208),
+                  Colors.black.withOpacity(0.58),
+                  Colors.black.withOpacity(0.38),
+                  const Color(0xFF0A3D24).withOpacity(0.35),
                 ],
               ),
             ),
-          ),
-          BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-            child: const SizedBox.expand(),
           ),
           SafeArea(
             child: FadeTransition(
               opacity: _fadeAnim,
               child: SlideTransition(
                 position: _slideAnim,
-                child: Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: isWide ? size.width * 0.22 : 20,
-                    vertical: 16,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _HeaderBack(
-                        breadcrumb: 'MIS SOLICITUDES',
-                        titulo: 'Estado de reclamos',
-                        onRefresh: _refrescar,
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: isWide ? 560 : 520,
+                    ),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isWide ? 24 : 22,
+                        vertical: 18,
                       ),
-                      const SizedBox(height: 20),
-                      if (!_cargando && _solicitudes.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 14),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 5,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF0A8F4D).withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color:
-                                    const Color(0xFF0A8F4D).withOpacity(0.3),
-                              ),
-                            ),
-                            child: Text(
-                              '${_solicitudes.length} solicitud(es)',
-                              style: const TextStyle(
-                                color: Color(0xFF0A8F4D),
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                              ),
+                      child: Column(
+                        children: [
+                          _HeaderPage(
+                            titulo: 'Mis solicitudes',
+                            subtitulo: 'Estado de tus reclamos',
+                            total: _solicitudes.length,
+                            onRefresh: _refrescar,
+                          ),
+                          const SizedBox(height: 18),
+                          Expanded(
+                            child: RefreshIndicator(
+                              color: const Color(0xFF0A8F4D),
+                              onRefresh: _refrescar,
+                              child: _buildContenido(),
                             ),
                           ),
-                        ),
-                      Expanded(
-                        child: _buildContenido(),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -232,82 +227,35 @@ class _MisSolicitudesPageState extends State<MisSolicitudesPage>
     }
 
     if (_solicitudes.isEmpty) {
-      return RefreshIndicator(
-        color: const Color(0xFF0A8F4D),
-        onRefresh: _refrescar,
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          children: [
-            const SizedBox(height: 120),
-            Container(
-              width: 80,
-              height: 80,
-              margin: const EdgeInsets.symmetric(horizontal: 120),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.06),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.1),
-                ),
-              ),
-              child: const Icon(
-                Icons.assignment_outlined,
-                color: Colors.white24,
-                size: 36,
-              ),
-            ),
-            const SizedBox(height: 20),
-            const Center(
-              child: Text(
-                'Sin solicitudes aún',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Center(
-              child: Text(
-                'Cuando reclames un objeto,\naparecerá aquí su estado.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white30,
-                  fontSize: 13,
-                  height: 1.5,
-                ),
-              ),
-            ),
-          ],
-        ),
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: const [
+          SizedBox(height: 100),
+          _EstadoVacio(),
+        ],
       );
     }
 
-    return RefreshIndicator(
-      color: const Color(0xFF0A8F4D),
-      onRefresh: _refrescar,
-      child: ListView.builder(
-        physics: const AlwaysScrollableScrollPhysics(),
-        itemCount: _solicitudes.length,
-        itemBuilder: (_, i) {
-          final s = _solicitudes[i];
+    return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
+      itemCount: _solicitudes.length,
+      itemBuilder: (_, i) {
+        final s = _solicitudes[i];
 
-          final estado = int.tryParse(
-                (s['idEstado'] ?? s['id_estado'] ?? -1).toString(),
-              ) ??
-              -1;
+        final estado = int.tryParse(
+              (s['idEstado'] ?? s['id_estado'] ?? -1).toString(),
+            ) ??
+            -1;
 
-          return _TarjetaSolicitud(
-            solicitud: s,
-            estado: estado,
-            estadoTexto: _estadoTexto(estado),
-            estadoColor: _estadoColor(estado),
-            estadoIcono: _estadoIcono(estado),
-            onActualizada: _refrescar,
-          );
-        },
-      ),
+        return _TarjetaSolicitud(
+          solicitud: s,
+          estado: estado,
+          estadoTexto: _estadoTexto(estado),
+          estadoColor: _estadoColor(estado),
+          estadoIcono: _estadoIcono(estado),
+          onActualizada: _refrescar,
+        );
+      },
     );
   }
 }
@@ -339,8 +287,15 @@ class _TarjetaSolicitudState extends State<_TarjetaSolicitud> {
 
   bool _tieneIdReporte(dynamic valor) {
     if (valor == null) return false;
+
     final texto = valor.toString().trim().toLowerCase();
+
     return texto.isNotEmpty && texto != 'null';
+  }
+
+  bool get _puedeVerUbicacion {
+    return widget.estado == Estados.solicitudAprobada ||
+        widget.estado == Estados.solicitudEntregada;
   }
 
   Future<void> _anularSolicitud() async {
@@ -356,9 +311,15 @@ class _TarjetaSolicitudState extends State<_TarjetaSolicitud> {
             onPressed: () => Navigator.pop(ctx, false),
             child: const Text('Cancelar'),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Anular'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFD97706),
+            ),
+            child: const Text(
+              'Anular',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -372,11 +333,13 @@ class _TarjetaSolicitudState extends State<_TarjetaSolicitud> {
 
     if (idSolicitud == null) {
       if (!context.mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('ID de solicitud inválido, no se puede anular.'),
         ),
       );
+
       return;
     }
 
@@ -407,349 +370,384 @@ class _TarjetaSolicitudState extends State<_TarjetaSolicitud> {
   Widget build(BuildContext context) {
     final s = widget.solicitud;
 
-    final fotoUrl = (
-      s['fotografia'] ??
-      s['tbl_objeto']?['fotografia'] ??
-      ''
-    ).toString();
+    final fotoUrl = (s['fotografia'] ?? s['tbl_objeto']?['fotografia'] ?? '')
+        .toString();
 
-    final nombreLugar = (
-      s['lugar'] ??
-      s['tbl_objeto']?['lugar_actual']?['nombre'] ??
-      'la oficina correspondiente'
-    ).toString();
+    final nombreLugar = (s['lugar'] ??
+            s['tbl_objeto']?['lugar_actual']?['nombre'] ??
+            'la oficina correspondiente')
+        .toString();
 
-    final esCoincidencia = _tieneIdReporte(s['idReporte']) ||
-        _tieneIdReporte(s['id_reporte']);
+    final esCoincidencia =
+        _tieneIdReporte(s['idReporte']) || _tieneIdReporte(s['id_reporte']);
 
     final descripcionSolicitud =
         (s['descripcion'] ?? 'Sin descripción').toString();
 
-    final descripcionObjeto = (
-      s['descripcionObjeto'] ??
-      s['tbl_objeto']?['descripcion_general'] ??
-      ''
-    ).toString();
+    final descripcionObjeto =
+        (s['descripcionObjeto'] ?? s['tbl_objeto']?['descripcion_general'] ?? '')
+            .toString();
 
-    final nombreObjeto = (
-      s['objeto'] ??
-      s['tbl_objeto']?['nombre'] ??
-      'Objeto'
-    ).toString();
+    final nombreObjeto =
+        (s['objeto'] ?? s['tbl_objeto']?['nombre'] ?? 'Objeto').toString();
 
-    final fechaPerdida = (
-      s['fechaAproxPerdida'] ??
-      s['fecha_aprox_perdida'] ??
-      'No especificada'
-    ).toString();
+    final fechaPerdida =
+        (s['fechaAproxPerdida'] ?? s['fecha_aprox_perdida'] ?? 'No especificada')
+            .toString();
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.07),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: widget.estadoColor.withOpacity(0.3),
-                width: 1.5,
-              ),
-            ),
-            child: Column(
-              children: [
-                InkWell(
-                  onTap: () => setState(() => _expandida = !_expandida),
-                  borderRadius: BorderRadius.circular(20),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
+    return _WhiteCard(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: EdgeInsets.zero,
+      borderColor: widget.estadoColor.withOpacity(0.25),
+      child: Column(
+        children: [
+          InkWell(
+            onTap: () => setState(() => _expandida = !_expandida),
+            borderRadius: BorderRadius.circular(18),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  _ImagenObjeto(
+                    fotoUrl: fotoUrl,
+                    color: widget.estadoColor,
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: fotoUrl.isNotEmpty
-                              ? Image.network(
-                                  fotoUrl,
-                                  width: 56,
-                                  height: 56,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => _IconoObjeto(
-                                    color: widget.estadoColor,
-                                  ),
-                                )
-                              : _IconoObjeto(
-                                  color: widget.estadoColor,
-                                ),
+                        _EtiquetaTipoSolicitud(
+                          esCoincidencia: esCoincidencia,
                         ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _EtiquetaTipoSolicitud(
-                                esCoincidencia: esCoincidencia,
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                nombreObjeto,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 4),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: widget.estadoColor.withOpacity(0.15),
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(
-                                    color: widget.estadoColor.withOpacity(0.35),
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      widget.estadoIcono,
-                                      color: widget.estadoColor,
-                                      size: 12,
-                                    ),
-                                    const SizedBox(width: 5),
-                                    Text(
-                                      widget.estadoTexto,
-                                      style: TextStyle(
-                                        color: widget.estadoColor,
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
+                        const SizedBox(height: 7),
+                        Text(
+                          nombreObjeto,
+                          style: const TextStyle(
+                            color: Color(0xFF111827),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                            height: 1.2,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        AnimatedRotation(
-                          turns: _expandida ? 0.5 : 0,
-                          duration: const Duration(milliseconds: 250),
-                          child: const Icon(
-                            Icons.keyboard_arrow_down_rounded,
-                            color: Colors.white38,
-                            size: 22,
-                          ),
+                        const SizedBox(height: 7),
+                        _BadgeEstado(
+                          texto: widget.estadoTexto,
+                          color: widget.estadoColor,
+                          icono: widget.estadoIcono,
                         ),
                       ],
                     ),
                   ),
-                ),
-                AnimatedSize(
-                  duration: const Duration(milliseconds: 250),
-                  curve: Curves.easeOut,
-                  child: _expandida
-                      ? Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Divider(
-                                color: Colors.white.withOpacity(0.08),
-                                height: 1,
+                  AnimatedRotation(
+                    turns: _expandida ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 250),
+                    child: const Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: Color(0xFF6B7280),
+                      size: 24,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOut,
+            child: _expandida
+                ? Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Divider(
+                          color: Color(0xFFE5E7EB),
+                          height: 1,
+                        ),
+                        const SizedBox(height: 14),
+                        _FilaInfo(
+                          icono: Icons.description_outlined,
+                          label: esCoincidencia
+                              ? 'Descripción del reporte'
+                              : 'Tu descripción',
+                          valor: descripcionSolicitud,
+                        ),
+                        if (descripcionObjeto.isNotEmpty) ...[
+                          const SizedBox(height: 10),
+                          _FilaInfo(
+                            icono: Icons.inventory_2_outlined,
+                            label: esCoincidencia
+                                ? 'Objeto sugerido por el administrador'
+                                : 'Objeto reclamado',
+                            valor: descripcionObjeto,
+                          ),
+                        ],
+                        const SizedBox(height: 10),
+                        if (_puedeVerUbicacion)
+                          _FilaInfo(
+                            icono: Icons.location_on_outlined,
+                            label: 'Ubicación de custodia',
+                            valor: nombreLugar,
+                          )
+                        else
+                          const _FilaInfo(
+                            icono: Icons.lock_outline_rounded,
+                            label: 'Ubicación de custodia',
+                            valor:
+                                'Disponible únicamente si tu solicitud es aprobada.',
+                          ),
+                        const SizedBox(height: 10),
+                        _FilaInfo(
+                          icono: Icons.calendar_today_outlined,
+                          label: 'Fecha aprox. pérdida',
+                          valor: fechaPerdida,
+                        ),
+                        if (esCoincidencia) ...[
+                          const SizedBox(height: 14),
+                          const _BannerEstado(
+                            color: Color(0xFFD97706),
+                            icono: Icons.bolt_rounded,
+                            mensaje:
+                                'Esta solicitud fue creada automáticamente porque el administrador encontró una coincidencia con tu reporte de pérdida.',
+                          ),
+                        ],
+                        if (widget.estado == Estados.solicitudAprobada) ...[
+                          const SizedBox(height: 14),
+                          _BannerEstado(
+                            color: const Color(0xFF0A8F4D),
+                            icono: Icons.check_circle_outline_rounded,
+                            mensaje:
+                                'Solicitud aprobada. Dirígete a $nombreLugar para continuar con la entrega.',
+                          ),
+                        ],
+                        if (widget.estado == Estados.solicitudRechazada) ...[
+                          const SizedBox(height: 14),
+                          const _BannerEstado(
+                            color: Color(0xFFDC2626),
+                            icono: Icons.cancel_outlined,
+                            mensaje:
+                                'Solicitud rechazada. Los datos no coincidieron con el objeto registrado.',
+                          ),
+                        ],
+                        if (widget.estado == Estados.solicitudAnulada) ...[
+                          const SizedBox(height: 14),
+                          const _BannerEstado(
+                            color: Color(0xFF6B7280),
+                            icono: Icons.block_rounded,
+                            mensaje:
+                                'Solicitud anulada. Este reclamo ya no está activo.',
+                          ),
+                        ],
+                        if (widget.estado == Estados.solicitudEntregada) ...[
+                          const SizedBox(height: 14),
+                          const _BannerEstado(
+                            color: Color(0xFF2563EB),
+                            icono: Icons.inventory_2_outlined,
+                            mensaje:
+                                'Objeto entregado. El proceso de reclamo fue finalizado.',
+                          ),
+                        ],
+                        if (widget.estado == Estados.solicitudPendiente) ...[
+                          const SizedBox(height: 14),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFEF3C7),
+                              borderRadius: BorderRadius.circular(13),
+                              border: Border.all(
+                                color:
+                                    const Color(0xFFD97706).withOpacity(0.22),
                               ),
-                              const SizedBox(height: 14),
-                              _FilaInfo(
-                                icono: Icons.description_outlined,
-                                label: esCoincidencia
-                                    ? 'Descripción del reporte'
-                                    : 'Tu descripción',
-                                valor: descripcionSolicitud,
-                              ),
-                              if (descripcionObjeto.isNotEmpty) ...[
-                                const SizedBox(height: 10),
-                                _FilaInfo(
-                                  icono: Icons.inventory_2_outlined,
-                                  label: esCoincidencia
-                                      ? 'Objeto sugerido por el administrador'
-                                      : 'Objeto reclamado',
-                                  valor: descripcionObjeto,
+                            ),
+                            child: const Row(
+                              children: [
+                                Icon(
+                                  Icons.info_outline_rounded,
+                                  color: Color(0xFFD97706),
+                                  size: 16,
                                 ),
-                              ],
-                              const SizedBox(height: 10),
-                              _FilaInfo(
-                                icono: Icons.location_on_outlined,
-                                label: 'Ubicación',
-                                valor: nombreLugar,
-                              ),
-                              const SizedBox(height: 10),
-                              _FilaInfo(
-                                icono: Icons.calendar_today_outlined,
-                                label: 'Fecha aprox. pérdida',
-                                valor: fechaPerdida,
-                              ),
-                              if (esCoincidencia) ...[
-                                const SizedBox(height: 14),
-                                _BannerEstado(
-                                  color: const Color(0xFFE07B2A),
-                                  icono: Icons.bolt_rounded,
-                                  mensaje:
-                                      'Esta solicitud fue creada automáticamente porque el administrador encontró una coincidencia con tu reporte de pérdida.',
-                                ),
-                              ],
-                              if (widget.estado ==
-                                  Estados.solicitudAprobada) ...[
-                                const SizedBox(height: 14),
-                                _BannerEstado(
-                                  color: const Color(0xFF0A8F4D),
-                                  icono: Icons.check_circle_outline_rounded,
-                                  mensaje:
-                                      'Solicitud aprobada. Dirígete a $nombreLugar para recoger tu objeto.',
-                                ),
-                              ],
-                              if (widget.estado ==
-                                  Estados.solicitudRechazada) ...[
-                                const SizedBox(height: 14),
-                                _BannerEstado(
-                                  color: const Color(0xFFDC2626),
-                                  icono: Icons.cancel_outlined,
-                                  mensaje:
-                                      'Solicitud rechazada. Los datos no coinciden con el objeto registrado.',
-                                ),
-                              ],
-                              if (widget.estado ==
-                                  Estados.solicitudAnulada) ...[
-                                const SizedBox(height: 14),
-                                _BannerEstado(
-                                  color: const Color(0xFF9CA3AF),
-                                  icono: Icons.block_rounded,
-                                  mensaje:
-                                      'Solicitud anulada. Este reclamo ya no está activo.',
-                                ),
-                              ],
-                              if (widget.estado ==
-                                  Estados.solicitudEntregada) ...[
-                                const SizedBox(height: 14),
-                                _BannerEstado(
-                                  color: const Color(0xFF2563EB),
-                                  icono: Icons.inventory_2_outlined,
-                                  mensaje:
-                                      'Objeto entregado. El proceso de reclamo fue finalizado.',
-                                ),
-                              ],
-                              if (widget.estado ==
-                                  Estados.solicitudPendiente) ...[
-                                const SizedBox(height: 14),
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: OutlinedButton.icon(
-                                    onPressed:
-                                        _anulando ? null : _anularSolicitud,
-                                    icon: _anulando
-                                        ? const SizedBox(
-                                            width: 16,
-                                            height: 16,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                            ),
-                                          )
-                                        : const Icon(Icons.cancel_outlined),
-                                    label: Text(
-                                      _anulando
-                                          ? 'Anulando...'
-                                          : 'Anular solicitud',
+                                SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Puedes anular esta solicitud si ya no necesitas reclamar el objeto.',
+                                    style: TextStyle(
+                                      color: Color(0xFF92400E),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      height: 1.35,
                                     ),
                                   ),
                                 ),
                               ],
-                            ],
+                            ),
                           ),
-                        )
-                      : const SizedBox.shrink(),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: _anulando ? null : _anularSolicitud,
+                              icon: _anulando
+                                  ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Icon(Icons.cancel_outlined),
+                              label: Text(
+                                _anulando
+                                    ? 'Anulando...'
+                                    : 'Anular solicitud',
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFFD97706),
+                                side: const BorderSide(
+                                  color: Color(0xFFD97706),
+                                ),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 13),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(13),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  )
+                : const SizedBox.shrink(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeaderPage extends StatelessWidget {
+  final String titulo;
+  final String subtitulo;
+  final int total;
+  final Future<void> Function() onRefresh;
+
+  const _HeaderPage({
+    required this.titulo,
+    required this.subtitulo,
+    required this.total,
+    required this.onRefresh,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _WhiteCard(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      child: Row(
+        children: [
+          _HeaderButton(
+            icono: Icons.arrow_back_rounded,
+            onTap: () => Navigator.pop(context),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'OBJETOS PERDIDOS',
+                  style: TextStyle(
+                    color: Color(0xFF0A8F4D),
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 2,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  titulo,
+                  style: const TextStyle(
+                    color: Color(0xFF111827),
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                Text(
+                  subtitulo,
+                  style: const TextStyle(
+                    color: Color(0xFF6B7280),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),
           ),
-        ),
+          Container(
+            margin: const EdgeInsets.only(right: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE1F5EE),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                color: const Color(0xFF0A8F4D).withOpacity(0.22),
+              ),
+            ),
+            child: Text(
+              '$total',
+              style: const TextStyle(
+                color: Color(0xFF065F46),
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          _HeaderButton(
+            icono: Icons.refresh_rounded,
+            onTap: () async => onRefresh(),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _EtiquetaTipoSolicitud extends StatelessWidget {
-  final bool esCoincidencia;
-
-  const _EtiquetaTipoSolicitud({required this.esCoincidencia});
-
-  @override
-  Widget build(BuildContext context) {
-    if (esCoincidencia) {
-      return Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 8,
-          vertical: 3,
-        ),
-        decoration: BoxDecoration(
-          color: const Color(0xFFE07B2A).withOpacity(0.15),
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(
-            color: const Color(0xFFE07B2A).withOpacity(0.4),
-          ),
-        ),
-        child: const Text(
-          '⚡ Coincidencia admin',
-          style: TextStyle(
-            color: Color(0xFFE07B2A),
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      );
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 8,
-        vertical: 3,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.18),
-        ),
-      ),
-      child: const Text(
-        'Solicitud manual',
-        style: TextStyle(
-          color: Colors.white54,
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
-  }
-}
-
-class _IconoObjeto extends StatelessWidget {
+class _ImagenObjeto extends StatelessWidget {
+  final String fotoUrl;
   final Color color;
 
-  const _IconoObjeto({required this.color});
+  const _ImagenObjeto({
+    required this.fotoUrl,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
+    if (fotoUrl.isEmpty) {
+      return _placeholder();
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(13),
+      child: Image.network(
+        fotoUrl,
+        width: 58,
+        height: 58,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _placeholder(),
+      ),
+    );
+  }
+
+  Widget _placeholder() {
     return Container(
-      width: 56,
-      height: 56,
+      width: 58,
+      height: 58,
       decoration: BoxDecoration(
         color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(13),
         border: Border.all(
           color: color.withOpacity(0.25),
         ),
@@ -758,6 +756,103 @@ class _IconoObjeto extends StatelessWidget {
         Icons.inventory_2_outlined,
         color: color,
         size: 26,
+      ),
+    );
+  }
+}
+
+class _EtiquetaTipoSolicitud extends StatelessWidget {
+  final bool esCoincidencia;
+
+  const _EtiquetaTipoSolicitud({
+    required this.esCoincidencia,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (esCoincidencia) {
+      return const _MiniLabel(
+        texto: '⚡ Coincidencia admin',
+        color: Color(0xFFD97706),
+      );
+    }
+
+    return const _MiniLabel(
+      texto: 'Solicitud manual',
+      color: Color(0xFF2563EB),
+    );
+  }
+}
+
+class _BadgeEstado extends StatelessWidget {
+  final String texto;
+  final Color color;
+  final IconData icono;
+
+  const _BadgeEstado({
+    required this.texto,
+    required this.color,
+    required this.icono,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withOpacity(0.25)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icono, color: color, size: 13),
+          const SizedBox(width: 6),
+          Text(
+            texto,
+            style: TextStyle(
+              color: color,
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MiniLabel extends StatelessWidget {
+  final String texto;
+  final Color color;
+
+  const _MiniLabel({
+    required this.texto,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 8,
+        vertical: 4,
+      ),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: color.withOpacity(0.22),
+        ),
+      ),
+      child: Text(
+        texto,
+        style: TextStyle(
+          color: color,
+          fontSize: 10,
+          fontWeight: FontWeight.w900,
+        ),
       ),
     );
   }
@@ -781,7 +876,7 @@ class _FilaInfo extends StatelessWidget {
       children: [
         Icon(
           icono,
-          color: Colors.white30,
+          color: const Color(0xFF6B7280),
           size: 15,
         ),
         const SizedBox(width: 8),
@@ -792,22 +887,22 @@ class _FilaInfo extends StatelessWidget {
                 TextSpan(
                   text: '$label: ',
                   style: const TextStyle(
-                    color: Colors.white38,
+                    color: Color(0xFF6B7280),
                     fontSize: 13,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
                 TextSpan(
                   text: valor,
                   style: const TextStyle(
-                    color: Colors.white70,
+                    color: Color(0xFF111827),
                     fontSize: 13,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w800,
+                    height: 1.35,
                   ),
                 ),
               ],
             ),
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],
@@ -831,10 +926,10 @@ class _BannerEstado extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
+        color: color.withOpacity(0.11),
+        borderRadius: BorderRadius.circular(13),
         border: Border.all(
-          color: color.withOpacity(0.35),
+          color: color.withOpacity(0.22),
         ),
       ),
       child: Row(
@@ -843,16 +938,17 @@ class _BannerEstado extends StatelessWidget {
           Icon(
             icono,
             color: color,
-            size: 16,
+            size: 17,
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
               mensaje,
               style: TextStyle(
                 color: color,
-                fontSize: 13,
-                height: 1.4,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                height: 1.35,
               ),
             ),
           ),
@@ -862,88 +958,112 @@ class _BannerEstado extends StatelessWidget {
   }
 }
 
-class _HeaderBack extends StatelessWidget {
-  final String titulo;
-  final String? breadcrumb;
-  final Future<void> Function() onRefresh;
+class _EstadoVacio extends StatelessWidget {
+  const _EstadoVacio();
 
-  const _HeaderBack({
-    required this.titulo,
-    required this.onRefresh,
-    this.breadcrumb,
+  @override
+  Widget build(BuildContext context) {
+    return _WhiteCard(
+      padding: const EdgeInsets.all(28),
+      child: const Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.assignment_outlined,
+            color: Color(0xFF0A8F4D),
+            size: 44,
+          ),
+          SizedBox(height: 14),
+          Text(
+            'Sin solicitudes aún',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Color(0xFF111827),
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          SizedBox(height: 6),
+          Text(
+            'Cuando reclames un objeto, aparecerá aquí el estado de tu solicitud.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Color(0xFF6B7280),
+              fontSize: 13,
+              height: 1.45,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WhiteCard extends StatelessWidget {
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+  final EdgeInsetsGeometry? margin;
+  final Color? borderColor;
+
+  const _WhiteCard({
+    required this.child,
+    required this.padding,
+    this.margin,
+    this.borderColor,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        InkWell(
-          onTap: () => Navigator.pop(context),
+    return Container(
+      margin: margin,
+      padding: padding,
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.94),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: borderColor ?? Colors.white.withOpacity(0.75),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.18),
+            blurRadius: 22,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+}
+
+class _HeaderButton extends StatelessWidget {
+  final IconData icono;
+  final VoidCallback onTap;
+
+  const _HeaderButton({
+    required this.icono,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        width: 38,
+        height: 38,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF3F4F6),
           borderRadius: BorderRadius.circular(12),
-          child: Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.07),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.1),
-              ),
-            ),
-            child: const Icon(
-              Icons.arrow_back_rounded,
-              color: Colors.white,
-              size: 18,
-            ),
-          ),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
         ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (breadcrumb != null)
-                Text(
-                  breadcrumb!,
-                  style: const TextStyle(
-                    color: Color(0xFF0A8F4D),
-                    fontSize: 9,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 2,
-                  ),
-                ),
-              Text(
-                titulo,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
-          ),
+        child: Icon(
+          icono,
+          color: const Color(0xFF111827),
+          size: 18,
         ),
-        InkWell(
-          onTap: () async => onRefresh(),
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.07),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.1),
-              ),
-            ),
-            child: const Icon(
-              Icons.refresh_rounded,
-              color: Colors.white70,
-              size: 18,
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 }

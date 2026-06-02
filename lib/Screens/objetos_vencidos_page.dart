@@ -1,8 +1,6 @@
-// ═══════════════════════════════════════════════════════════════════
-// objetos_vencidos_page.dart  —  UI mejorada
-// ═══════════════════════════════════════════════════════════════════
 import 'dart:ui';
 import 'package:flutter/material.dart';
+
 import '../Constants/app_colors.dart';
 import '../Constants/estados.dart';
 import '../Repositories/objeto_repository.dart';
@@ -15,18 +13,52 @@ class ObjetosVencidosPage extends StatefulWidget {
   State<ObjetosVencidosPage> createState() => _ObjetosVencidosPageState();
 }
 
-class _ObjetosVencidosPageState extends State<ObjetosVencidosPage> {
+class _ObjetosVencidosPageState extends State<ObjetosVencidosPage>
+    with SingleTickerProviderStateMixin {
   List<Map<String, dynamic>> _objetos = [];
   bool _cargando = true;
+
+  late AnimationController _animCtrl;
+  late Animation<double> _fadeAnim;
+  late Animation<Offset> _slideAnim;
 
   @override
   void initState() {
     super.initState();
+
+    _animCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 650),
+    );
+
+    _fadeAnim = CurvedAnimation(
+      parent: _animCtrl,
+      curve: Curves.easeOut,
+    );
+
+    _slideAnim = Tween<Offset>(
+      begin: const Offset(0, 0.05),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(
+        parent: _animCtrl,
+        curve: Curves.easeOut,
+      ),
+    );
+
+    _animCtrl.forward();
     _cargarVencidos();
+  }
+
+  @override
+  void dispose() {
+    _animCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _cargarVencidos() async {
     final data = await ObjetoRepository.obtenerObjetosVencidos();
+
     if (mounted) {
       setState(() {
         _objetos = data;
@@ -35,45 +67,71 @@ class _ObjetosVencidosPageState extends State<ObjetosVencidosPage> {
     }
   }
 
+  Future<void> _refrescar() async {
+    setState(() => _cargando = true);
+    await _cargarVencidos();
+  }
+
   int _diasAlmacenado(String? fechaStr) {
     if (fechaStr == null) return 0;
+
     final fecha = DateTime.tryParse(fechaStr);
+
     if (fecha == null) return 0;
+
     return DateTime.now().difference(fecha).inDays;
   }
 
-  int _tiempoMax(Map<String, dynamic> obj) =>
-      obj['tiempoMaximoAlmacenamiento'] as int? ??
-      obj['tiempo_maximo_almacenamiento'] as int? ??
-      obj['tbl_categoria']?['tiempo_maximo_almacenamiento'] as int? ??
-      0;
+  int _tiempoMax(Map<String, dynamic> obj) {
+    return obj['tiempoMaximoAlmacenamiento'] as int? ??
+        obj['tiempo_maximo_almacenamiento'] as int? ??
+        obj['tbl_categoria']?['tiempo_maximo_almacenamiento'] as int? ??
+        0;
+  }
 
   Future<void> _mostrarDialogoDisposicion(
-      Map<String, dynamic> obj, int nuevoEstado) async {
+    Map<String, dynamic> obj,
+    int nuevoEstado,
+  ) async {
     final esDonacion = nuevoEstado == Estados.objetoDonado;
+
+    final color = esDonacion ? const Color(0xFF7C3AED) : const Color(0xFFDC2626);
+
     final confirmar = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF0D1F16),
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
         title: Row(
           children: [
-            Icon(
-              esDonacion
-                  ? Icons.volunteer_activism
-                  : Icons.delete_outline,
-              color: esDonacion ? Colors.purple : Colors.red,
-              size: 22,
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(13),
+              ),
+              child: Icon(
+                esDonacion
+                    ? Icons.volunteer_activism
+                    : Icons.delete_outline_rounded,
+                color: color,
+                size: 22,
+              ),
             ),
-            const SizedBox(width: 8),
-            Text(
-              esDonacion ? 'Marcar como donado' : 'Marcar como desecho',
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                esDonacion ? 'Marcar como donado' : 'Marcar como desecho',
+                style: const TextStyle(
+                  color: Color(0xFF111827),
+                  fontWeight: FontWeight.w900,
+                  fontSize: 18,
+                ),
+              ),
             ),
           ],
         ),
@@ -82,35 +140,54 @@ class _ObjetosVencidosPageState extends State<ObjetosVencidosPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Objeto: ${obj['nombre']}',
+              'Objeto: ${obj['nombre'] ?? 'Sin nombre'}',
               style: const TextStyle(
-                  color: Colors.white70, fontWeight: FontWeight.bold),
+                color: Color(0xFF111827),
+                fontWeight: FontWeight.w800,
+                fontSize: 14,
+              ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Text(
               esDonacion
-                  ? 'El objeto será marcado como donado y dejará de estar disponible.'
-                  : 'El objeto será marcado como desecho y dejará de estar disponible.',
-              style: const TextStyle(color: Colors.white60, fontSize: 13),
+                  ? 'El objeto será marcado como donado y dejará de estar disponible para reclamos.'
+                  : 'El objeto será marcado como desecho y dejará de estar disponible para reclamos.',
+              style: const TextStyle(
+                color: Color(0xFF6B7280),
+                fontSize: 13,
+                height: 1.45,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),
+        actionsPadding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child:
-                const Text('Cancelar', style: TextStyle(color: Colors.white54)),
+            child: const Text(
+              'Cancelar',
+              style: TextStyle(
+                color: Color(0xFF6B7280),
+                fontWeight: FontWeight.w800,
+              ),
+            ),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: esDonacion ? Colors.purple : Colors.red,
+              backgroundColor: color,
+              elevation: 0,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             child: Text(
               esDonacion ? 'Confirmar donación' : 'Confirmar desecho',
-              style: const TextStyle(color: Colors.white),
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+              ),
             ),
           ),
         ],
@@ -125,198 +202,288 @@ class _ObjetosVencidosPageState extends State<ObjetosVencidosPage> {
     );
 
     if (!mounted) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(exito
-            ? (esDonacion
-                ? 'Objeto marcado como donado'
-                : 'Objeto marcado como desecho')
-            : 'Error al actualizar el objeto'),
-        backgroundColor: exito
-            ? (esDonacion ? Colors.purple : Colors.red)
-            : Colors.red,
+        content: Text(
+          exito
+              ? (esDonacion
+                  ? 'Objeto marcado como donado'
+                  : 'Objeto marcado como desecho')
+              : 'Error al actualizar el objeto',
+        ),
+        backgroundColor: exito ? color : const Color(0xFFDC2626),
       ),
     );
+
     if (exito) await _cargarVencidos();
   }
 
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final isWide = size.width > 600;
+    final isWide = size.width > 760;
 
     return Scaffold(
       body: Stack(
         fit: StackFit.expand,
         children: [
-          Image.asset('assets/udea_bg.jpeg', fit: BoxFit.cover),
+          Image.asset(
+            'assets/udea_bg.jpeg',
+            fit: BoxFit.cover,
+          ),
+          BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 1.2, sigmaY: 1.2),
+            child: const SizedBox.expand(),
+          ),
           Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
                 colors: [
-                  Color(0xBB000000),
-                  Color(0xCC021008),
-                  Color(0xEE011208),
+                  Colors.black.withOpacity(0.56),
+                  Colors.black.withOpacity(0.36),
+                  const Color(0xFF0A3D24).withOpacity(0.34),
                 ],
-                stops: [0.0, 0.5, 1.0],
               ),
             ),
           ),
-          BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-            child: const SizedBox.expand(),
-          ),
           SafeArea(
-            child: Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: isWide ? size.width * 0.18 : 20,
-                vertical: 16,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // ── Header ──────────────────────────────────────
-                  Row(
-                    children: [
-                      _BotonVolver(onTap: () => Navigator.pop(context)),
-                      const SizedBox(width: 12),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'UNIVERSIDAD DE ANTIOQUIA',
-                              style: TextStyle(
-                                color: Color(0xFF0A8F4D),
-                                fontSize: 8,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 1.5,
-                              ),
-                            ),
-                            Text(
-                              'Objetos vencidos',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ],
-                        ),
+            child: FadeTransition(
+              opacity: _fadeAnim,
+              child: SlideTransition(
+                position: _slideAnim,
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1080),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isWide ? 26 : 22,
+                        vertical: 18,
                       ),
-                      // Badge naranja
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.orange.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                              color: Colors.orange.withOpacity(0.4)),
-                        ),
-                        child: const Text(
-                          'VENCIDOS',
-                          style: TextStyle(
-                            color: Colors.orange,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 1,
+                      child: Column(
+                        children: [
+                          _HeaderPage(
+                            total: _objetos.length,
+                            onRefresh: _refrescar,
                           ),
-                        ),
+                          const SizedBox(height: 18),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _ResumenCard(
+                                  titulo: 'Objetos vencidos',
+                                  valor: '${_objetos.length}',
+                                  color: const Color(0xFFD97706),
+                                  icono: Icons.hourglass_disabled_outlined,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _ResumenCard(
+                                  titulo: 'Acción requerida',
+                                  valor: _objetos.isEmpty ? 'No' : 'Sí',
+                                  color: _objetos.isEmpty
+                                      ? const Color(0xFF0A8F4D)
+                                      : const Color(0xFFDC2626),
+                                  icono: _objetos.isEmpty
+                                      ? Icons.check_circle_outline_rounded
+                                      : Icons.warning_amber_rounded,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          Expanded(
+                            child: _cargando
+                                ? const Center(
+                                    child: CircularProgressIndicator(
+                                      color: AppColors.verde,
+                                      strokeWidth: 2.5,
+                                    ),
+                                  )
+                                : _objetos.isEmpty
+                                    ? RefreshIndicator(
+                                        color: AppColors.verde,
+                                        onRefresh: _refrescar,
+                                        child: ListView(
+                                          physics:
+                                              const AlwaysScrollableScrollPhysics(),
+                                          children: const [
+                                            SizedBox(height: 100),
+                                            _EstadoVacio(),
+                                          ],
+                                        ),
+                                      )
+                                    : RefreshIndicator(
+                                        color: AppColors.verde,
+                                        onRefresh: _refrescar,
+                                        child: ListView.builder(
+                                          physics:
+                                              const AlwaysScrollableScrollPhysics(),
+                                          itemCount: _objetos.length,
+                                          itemBuilder: (_, i) {
+                                            final obj = _objetos[i];
+
+                                            final dias = _diasAlmacenado(
+                                              (obj['fechaHallazgo'] ??
+                                                      obj['fecha_hallazgo'])
+                                                  ?.toString(),
+                                            );
+
+                                            final tiempoMax = _tiempoMax(obj);
+                                            final diasVencido = dias - tiempoMax;
+
+                                            final fotoUrl =
+                                                (obj['fotografia'] ?? '')
+                                                    .toString();
+
+                                            return _TarjetaVencido(
+                                              obj: obj,
+                                              fotoUrl: fotoUrl,
+                                              dias: dias,
+                                              tiempoMax: tiempoMax,
+                                              diasVencido: diasVencido,
+                                              onDonar: () =>
+                                                  _mostrarDialogoDisposicion(
+                                                obj,
+                                                Estados.objetoDonado,
+                                              ),
+                                              onDesechar: () =>
+                                                  _mostrarDialogoDisposicion(
+                                                obj,
+                                                Estados.objetoDesecho,
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Objetos que superaron su tiempo máximo de almacenamiento.',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.4),
-                      fontSize: 12,
-                      height: 1.4,
                     ),
                   ),
-                  const SizedBox(height: 20),
-
-                  // ── Lista ────────────────────────────────────────
-                  Expanded(
-                    child: _cargando
-                        ? const Center(
-                            child: CircularProgressIndicator(
-                              color: Color(0xFF0A8F4D),
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : _objetos.isEmpty
-                            ? Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Container(
-                                      width: 72,
-                                      height: 72,
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFF0A8F4D)
-                                            .withOpacity(0.1),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: const Icon(
-                                        Icons.check_circle_outline_rounded,
-                                        color: Color(0xFF0A8F4D),
-                                        size: 36,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 16),
-                                    const Text(
-                                      'Sin objetos vencidos',
-                                      style: TextStyle(
-                                        color: Colors.white70,
-                                        fontSize: 17,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      'Todos los objetos están dentro del tiempo permitido.',
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        color: Colors.white.withOpacity(0.35),
-                                        fontSize: 13,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              )
-                            : ListView.builder(
-                                itemCount: _objetos.length,
-                                itemBuilder: (_, i) {
-                                  final obj = _objetos[i];
-                                  final dias = _diasAlmacenado(
-                                    (obj['fechaHallazgo'] ?? obj['fecha_hallazgo'])?.toString(),
-                                  );
-                                  final tiempoMax = _tiempoMax(obj);
-                                  final diasVencido = dias - tiempoMax;
-                                  final fotoUrl =
-                                      (obj['fotografia'] ?? '').toString();
-
-                                  return _TarjetaVencido(
-                                    obj: obj,
-                                    fotoUrl: fotoUrl,
-                                    dias: dias,
-                                    tiempoMax: tiempoMax,
-                                    diasVencido: diasVencido,
-                                    onDonar: () => _mostrarDialogoDisposicion(
-                                        obj, Estados.objetoDonado),
-                                    onDesechar: () =>
-                                        _mostrarDialogoDisposicion(
-                                            obj, Estados.objetoDesecho),
-                                  );
-                                },
-                              ),
-                  ),
-                ],
+                ),
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeaderPage extends StatelessWidget {
+  final int total;
+  final Future<void> Function() onRefresh;
+
+  const _HeaderPage({
+    required this.total,
+    required this.onRefresh,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _WhiteCard(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      child: Row(
+        children: [
+          _HeaderButton(
+            icono: Icons.arrow_back_rounded,
+            onTap: () => Navigator.pop(context),
+          ),
+          const SizedBox(width: 14),
+          const Expanded(
+            child: HeaderUdeaAdmin(
+              titulo: 'Objetos vencidos',
+              subtitulo: 'Disposición final',
+            ),
+          ),
+          Container(
+            margin: const EdgeInsets.only(right: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFEF3C7),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                color: const Color(0xFFD97706).withOpacity(0.25),
+              ),
+            ),
+            child: Text(
+              '$total vencido(s)',
+              style: const TextStyle(
+                color: Color(0xFF92400E),
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          _HeaderButton(
+            icono: Icons.refresh_rounded,
+            onTap: () async => onRefresh(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ResumenCard extends StatelessWidget {
+  final String titulo;
+  final String valor;
+  final Color color;
+  final IconData icono;
+
+  const _ResumenCard({
+    required this.titulo,
+    required this.valor,
+    required this.color,
+    required this.icono,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _WhiteCard(
+      padding: const EdgeInsets.all(14),
+      borderColor: color.withOpacity(0.18),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              icono,
+              color: color,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  titulo,
+                  style: const TextStyle(
+                    color: Color(0xFF6B7280),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Text(
+                  valor,
+                  style: const TextStyle(
+                    color: Color(0xFF111827),
+                    fontSize: 21,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -346,152 +513,140 @@ class _TarjetaVencido extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final nombre = (obj['nombre'] ?? 'Sin nombre').toString();
+
+    final categoria =
+        (obj['categoria'] ?? obj['tbl_categoria']?['nombre'] ?? 'Sin categoría')
+            .toString();
+
+    final lugarActual =
+        (obj['lugarActual'] ?? obj['lugar_actual']?['nombre'] ?? 'Sin lugar')
+            .toString();
+
+    final diasVencidoSeguro = diasVencido < 0 ? 0 : diasVencido;
+
+    return _WhiteCard(
       margin: const EdgeInsets.only(bottom: 14),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.orange.withOpacity(0.35), width: 1.5),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Imagen
-              if (fotoUrl.isNotEmpty)
-                ClipRRect(
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(20)),
-                  child: Image.network(
-                    fotoUrl,
-                    width: double.infinity,
-                    height: 130,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                  ),
-                ),
-
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.all(14),
+      borderColor: const Color(0xFFD97706).withOpacity(0.25),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _ImagenObjeto(url: fotoUrl),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    // Nombre + badge
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            obj['nombre'] ?? 'Sin nombre',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.orange.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(20),
-                            border:
-                                Border.all(color: Colors.orange.withOpacity(0.5)),
-                          ),
-                          child: Text(
-                            '+$diasVencido días',
-                            style: const TextStyle(
-                              color: Colors.orange,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ],
+                    _Badge(
+                      texto: 'Vencido',
+                      color: const Color(0xFFD97706),
+                      icono: Icons.hourglass_disabled_outlined,
                     ),
-                    const SizedBox(height: 10),
-
-                    // Info
-                    _InfoChip(
-                      icono: Icons.category_outlined,
-                      texto: (obj['categoria'] ??
-                              obj['tbl_categoria']?['nombre'] ??
-                              'Sin categoría')
-                          .toString(),
-                    ),
-                    const SizedBox(height: 4),
-                    _InfoChip(
-                      icono: Icons.timer_outlined,
-                      texto:
-                          'Límite: $tiempoMax días · Almacenado: $dias días',
-                    ),
-                    _InfoChip(
-                      icono: Icons.location_on_outlined,
-                      texto: (obj['lugarActual'] ??
-                              obj['lugar_actual']?['nombre'] ??
-                              'Sin lugar')
-                          .toString(),
-                    ),
-
-                    const SizedBox(height: 14),
-
-                    // Botones
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _BotonAccion(
-                            icono: Icons.volunteer_activism,
-                            texto: 'Donar',
-                            color: Colors.purple,
-                            onTap: onDonar,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _BotonAccion(
-                            icono: Icons.delete_outline_rounded,
-                            texto: 'Desechar',
-                            color: Colors.red,
-                            onTap: onDesechar,
-                          ),
-                        ),
-                      ],
+                    const SizedBox(width: 8),
+                    _Badge(
+                      texto: '+$diasVencidoSeguro días',
+                      color: const Color(0xFFDC2626),
+                      icono: Icons.warning_amber_rounded,
                     ),
                   ],
                 ),
-              ),
-            ],
+                const SizedBox(height: 10),
+                Text(
+                  nombre,
+                  style: const TextStyle(
+                    color: Color(0xFF111827),
+                    fontSize: 19,
+                    fontWeight: FontWeight.w900,
+                    height: 1.15,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                _InfoLine(
+                  icono: Icons.category_outlined,
+                  texto: categoria,
+                ),
+                const SizedBox(height: 6),
+                _InfoLine(
+                  icono: Icons.timer_outlined,
+                  texto: 'Límite: $tiempoMax días · Almacenado: $dias días',
+                ),
+                const SizedBox(height: 6),
+                _InfoLine(
+                  icono: Icons.location_on_outlined,
+                  texto: 'Custodia: $lugarActual',
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _BotonAccion(
+                        icono: Icons.volunteer_activism,
+                        texto: 'Donar',
+                        color: const Color(0xFF7C3AED),
+                        onTap: onDonar,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _BotonAccion(
+                        icono: Icons.delete_outline_rounded,
+                        texto: 'Desechar',
+                        color: const Color(0xFFDC2626),
+                        onTap: onDesechar,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
 }
 
-class _InfoChip extends StatelessWidget {
-  final IconData icono;
-  final String texto;
-  const _InfoChip({required this.icono, required this.texto});
+class _ImagenObjeto extends StatelessWidget {
+  final String url;
+
+  const _ImagenObjeto({
+    required this.url,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Row(
-        children: [
-          Icon(icono, color: Colors.white38, size: 13),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              texto,
-              style:
-                  TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
-            ),
-          ),
-        ],
+    if (url.isEmpty) return _placeholder();
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: Image.network(
+        url,
+        width: 96,
+        height: 96,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _placeholder(),
+      ),
+    );
+  }
+
+  Widget _placeholder() {
+    return Container(
+      width: 96,
+      height: 96,
+      decoration: BoxDecoration(
+        color: const Color(0xFFFEF3C7),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: const Color(0xFFD97706).withOpacity(0.25),
+        ),
+      ),
+      child: const Icon(
+        Icons.inventory_2_outlined,
+        color: Color(0xFFD97706),
+        size: 32,
       ),
     );
   }
@@ -514,22 +669,199 @@ class _BotonAccion extends StatelessWidget {
   Widget build(BuildContext context) {
     return ElevatedButton.icon(
       onPressed: onTap,
-      icon: Icon(icono, color: Colors.white, size: 16),
-      label:
-          Text(texto, style: const TextStyle(color: Colors.white, fontSize: 13)),
+      icon: Icon(
+        icono,
+        color: Colors.white,
+        size: 16,
+      ),
+      label: Text(
+        texto,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 13,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
       style: ElevatedButton.styleFrom(
-        backgroundColor: color.withOpacity(0.85),
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        backgroundColor: color,
         elevation: 0,
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(13),
+        ),
       ),
     );
   }
 }
 
-class _BotonVolver extends StatelessWidget {
+class _InfoLine extends StatelessWidget {
+  final IconData icono;
+  final String texto;
+
+  const _InfoLine({
+    required this.icono,
+    required this.texto,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(
+          icono,
+          color: const Color(0xFF6B7280),
+          size: 14,
+        ),
+        const SizedBox(width: 7),
+        Expanded(
+          child: Text(
+            texto,
+            style: const TextStyle(
+              color: Color(0xFF6B7280),
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              height: 1.3,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _Badge extends StatelessWidget {
+  final String texto;
+  final Color color;
+  final IconData icono;
+
+  const _Badge({
+    required this.texto,
+    required this.color,
+    required this.icono,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: color.withOpacity(0.25),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icono,
+            color: color,
+            size: 12,
+          ),
+          const SizedBox(width: 5),
+          Text(
+            texto,
+            style: TextStyle(
+              color: color,
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EstadoVacio extends StatelessWidget {
+  const _EstadoVacio();
+
+  @override
+  Widget build(BuildContext context) {
+    return _WhiteCard(
+      padding: const EdgeInsets.all(28),
+      child: const Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.check_circle_outline_rounded,
+            color: Color(0xFF0A8F4D),
+            size: 46,
+          ),
+          SizedBox(height: 14),
+          Text(
+            'Sin objetos vencidos',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Color(0xFF111827),
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          SizedBox(height: 6),
+          Text(
+            'Todos los objetos están dentro del tiempo permitido de almacenamiento.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Color(0xFF6B7280),
+              fontSize: 13,
+              height: 1.45,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WhiteCard extends StatelessWidget {
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+  final EdgeInsetsGeometry? margin;
+  final Color? borderColor;
+
+  const _WhiteCard({
+    required this.child,
+    required this.padding,
+    this.margin,
+    this.borderColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: margin,
+      padding: padding,
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.94),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: borderColor ?? Colors.white.withOpacity(0.75),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.18),
+            blurRadius: 22,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+}
+
+class _HeaderButton extends StatelessWidget {
+  final IconData icono;
   final VoidCallback onTap;
-  const _BotonVolver({required this.onTap});
+
+  const _HeaderButton({
+    required this.icono,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -540,12 +872,15 @@ class _BotonVolver extends StatelessWidget {
         width: 38,
         height: 38,
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.06),
+          color: const Color(0xFFF3F4F6),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white.withOpacity(0.08)),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
         ),
-        child: const Icon(Icons.arrow_back_rounded,
-            color: Colors.white70, size: 18),
+        child: Icon(
+          icono,
+          color: const Color(0xFF111827),
+          size: 18,
+        ),
       ),
     );
   }

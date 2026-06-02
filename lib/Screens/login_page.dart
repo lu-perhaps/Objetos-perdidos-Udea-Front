@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../main.dart';
 
 class LoginPage extends StatefulWidget {
@@ -36,10 +37,7 @@ class _LoginPageState extends State<LoginPage>
       begin: const Offset(0, 0.08),
       end: Offset.zero,
     ).animate(
-      CurvedAnimation(
-        parent: _animCtrl,
-        curve: Curves.easeOut,
-      ),
+      CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut),
     );
 
     _animCtrl.forward();
@@ -59,6 +57,14 @@ class _LoginPageState extends State<LoginPage>
         OAuthProvider.google,
         redirectTo: 'http://localhost:3000',
       );
+    } catch (e) {
+      debugPrint('ERROR login Google: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No se pudo iniciar sesión. Intenta nuevamente.'),
+        ),
+      );
     } finally {
       if (mounted) setState(() => _cargando = false);
     }
@@ -67,38 +73,35 @@ class _LoginPageState extends State<LoginPage>
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final isWide = size.width > 600;
+    final isWide = size.width > 760;
 
     return Scaffold(
       body: Stack(
         fit: StackFit.expand,
         children: [
-          Image.asset(
-            'assets/udea_bg.jpeg',
-            fit: BoxFit.cover,
+          Image.asset('assets/udea_bg.jpeg', fit: BoxFit.cover),
+          BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 1.2, sigmaY: 1.2),
+            child: const SizedBox.expand(),
           ),
           Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
                 colors: [
-                  Color(0xCC000000),
-                  Color(0xBB021A0D),
-                  Color(0xEE011208),
+                  Colors.black.withOpacity(0.60),
+                  Colors.black.withOpacity(0.42),
+                  const Color(0xFF0A3D24).withOpacity(0.38),
                 ],
               ),
             ),
-          ),
-          BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
-            child: const SizedBox.expand(),
           ),
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
                 padding: EdgeInsets.symmetric(
-                  horizontal: isWide ? size.width * 0.3 : 28,
+                  horizontal: isWide ? size.width * 0.28 : 26,
                   vertical: 32,
                 ),
                 child: FadeTransition(
@@ -109,99 +112,114 @@ class _LoginPageState extends State<LoginPage>
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const _LogoLogin(),
-
                         const SizedBox(height: 26),
-
                         const Text(
                           'UNIVERSIDAD DE ANTIOQUIA',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            color: Color(0xFF0A8F4D),
+                            color: Color(0xFF9EF0C0),
                             fontSize: 11,
-                            fontWeight: FontWeight.w800,
+                            fontWeight: FontWeight.w900,
                             letterSpacing: 3,
                           ),
                         ),
-
-                        const SizedBox(height: 12),
-
-                        RichText(
+                        const SizedBox(height: 14),
+                        const Text(
+                          'Objetos Perdidos\nUdeA',
                           textAlign: TextAlign.center,
-                          text: const TextSpan(
-                            children: [
-                              TextSpan(
-                                text: 'Objetos Perdidos\n',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 34,
-                                  fontWeight: FontWeight.w800,
-                                  height: 1.15,
-                                ),
-                              ),
-                              TextSpan(
-                                text: 'UdeA',
-                                style: TextStyle(
-                                  color: Color(0xFF0A8F4D),
-                                  fontSize: 34,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ],
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 38,
+                            fontWeight: FontWeight.w900,
+                            height: 1.12,
                           ),
                         ),
-
                         const SizedBox(height: 16),
-
                         const Text(
                           'Conectamos a la comunidad para recuperar lo tuyo.\nIngresa con tu cuenta institucional.',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            color: Colors.white60,
+                            color: Colors.white70,
                             fontSize: 14,
-                            height: 1.5,
+                            height: 1.6,
                           ),
                         ),
-
-                        const SizedBox(height: 40),
-
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(24),
-                          child: BackdropFilter(
-                            filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                            child: Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 28,
-                                vertical: 30,
+                        const SizedBox(height: 42),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.94),
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.75),
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.22),
+                                blurRadius: 28,
+                                offset: const Offset(0, 16),
                               ),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.12),
-                                borderRadius: BorderRadius.circular(24),
-                                border: Border.all(
-                                  color: Colors.white.withOpacity(0.16),
+                            ],
+                          ),
+                          child: Column(
+                            children: [
+                              const Text(
+                                'Iniciar sesión',
+                                style: TextStyle(
+                                  color: Color(0xFF111827),
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w900,
                                 ),
                               ),
-                              child: _BotonGoogle(
+                              const SizedBox(height: 8),
+                              const Text(
+                                'Usa tu correo institucional @udea.edu.co',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Color(0xFF6B7280),
+                                  fontSize: 13,
+                                ),
+                              ),
+                              const SizedBox(height: 22),
+                              _BotonGoogle(
                                 cargando: _cargando,
                                 onTap: _signInWithGoogle,
                               ),
-                            ),
+                              const SizedBox(height: 16),
+                              const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.lock_outline_rounded,
+                                    color: Color(0xFF6B7280),
+                                    size: 13,
+                                  ),
+                                  SizedBox(width: 6),
+                                  Text(
+                                    'Acceso seguro con Google',
+                                    style: TextStyle(
+                                      color: Color(0xFF6B7280),
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                         ),
-
-                        const SizedBox(height: 48),
-
-                        Row(
+                        const SizedBox(height: 34),
+                        const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(
                               Icons.shield_outlined,
-                              color: const Color(0xFF0A8F4D).withOpacity(0.85),
-                              size: 16,
+                              color: Color(0xFF9EF0C0),
+                              size: 15,
                             ),
-                            const SizedBox(width: 8),
-                            const Text(
-                              'Acceso seguro con @udea.edu.co',
+                            SizedBox(width: 8),
+                            Text(
+                              'Sistema institucional de objetos perdidos',
                               style: TextStyle(
                                 color: Colors.white70,
                                 fontSize: 12,
@@ -228,27 +246,27 @@ class _LogoLogin extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 74,
-      height: 74,
+      width: 82,
+      height: 82,
       decoration: BoxDecoration(
-        color: const Color(0xFF0A8F4D).withOpacity(0.16),
+        color: const Color(0xFF0A8F4D),
         shape: BoxShape.circle,
         border: Border.all(
-          color: const Color(0xFF0A8F4D).withOpacity(0.45),
-          width: 1.5,
+          color: Colors.white.withOpacity(0.85),
+          width: 3,
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF0A8F4D).withOpacity(0.18),
-            blurRadius: 28,
+            color: const Color(0xFF0A8F4D).withOpacity(0.38),
+            blurRadius: 30,
             offset: const Offset(0, 10),
           ),
         ],
       ),
       child: const Icon(
         Icons.school_rounded,
-        color: Color(0xFF0A8F4D),
-        size: 36,
+        color: Colors.white,
+        size: 38,
       ),
     );
   }
@@ -271,8 +289,8 @@ class _BotonGoogle extends StatelessWidget {
       child: ElevatedButton(
         onPressed: cargando ? null : onTap,
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black87,
+          backgroundColor: const Color(0xFF0A8F4D),
+          disabledBackgroundColor: const Color(0xFF0A8F4D).withOpacity(0.45),
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
@@ -284,27 +302,27 @@ class _BotonGoogle extends StatelessWidget {
                 height: 22,
                 child: CircularProgressIndicator(
                   strokeWidth: 2.5,
-                  color: Color(0xFF0A8F4D),
+                  color: Colors.white,
                 ),
               )
-            : Row(
+            : const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text(
+                  Text(
                     'G',
                     style: TextStyle(
                       fontSize: 17,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFFDB4437),
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  const Text(
+                  SizedBox(width: 12),
+                  Text(
                     'Iniciar sesión con Google',
                     style: TextStyle(
                       fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black87,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
                     ),
                   ),
                 ],
