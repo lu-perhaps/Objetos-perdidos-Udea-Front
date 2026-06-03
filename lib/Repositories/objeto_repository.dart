@@ -12,7 +12,13 @@ import '../constants/estados.dart';
 import '../Constants/api_config.dart';
 
 class ObjetoRepository {
-  // Crea el objeto y opcionalmente lo publica
+  static String _fechaSql(DateTime fecha) {
+    return '${fecha.year}-'
+        '${fecha.month.toString().padLeft(2, '0')}-'
+        '${fecha.day.toString().padLeft(2, '0')}';
+  }
+
+  // Crea el objeto y opcionalmente lo publica.
   static Future<int?> registrarObjeto({
     required String nombre,
     required String descripcionGeneral,
@@ -35,18 +41,13 @@ class ObjetoRepository {
 
       final response = await http.post(
         Uri.parse('${ApiConfig.baseUrl}/api/objetos'),
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'nombre': nombre,
           'descripcionGeneral': descripcionGeneral,
           'descripcionDetallada': descripcionDetallada,
           'idCategoria': idCategoria,
-          'fechaHallazgo':
-              '${fechaHallazgo.year}-'
-              '${fechaHallazgo.month.toString().padLeft(2, '0')}-'
-              '${fechaHallazgo.day.toString().padLeft(2, '0')}',
+          'fechaHallazgo': _fechaSql(fechaHallazgo),
           'fotografia': fotografia,
           'idLugarEncontrado': idLugarEncontrado,
           'idLugarActual': idLugarActual,
@@ -63,14 +64,55 @@ class ObjetoRepository {
       }
 
       final data = jsonDecode(response.body);
-      return data['id'] as int?;
+      return int.tryParse(data['id'].toString());
     } catch (e) {
       debugPrint('ERROR registrarObjeto API: $e');
       return null;
     }
   }
 
-  // Carga categorías para el dropdown
+  // Edita un objeto existente desde administración.
+  static Future<bool> actualizarObjeto({
+    required int idObjeto,
+    required String nombre,
+    required String descripcionGeneral,
+    required String descripcionDetallada,
+    required int idCategoria,
+    required int idLugarEncontrado,
+    required int idLugarActual,
+    required DateTime fechaHallazgo,
+    String? fotografia,
+  }) async {
+    try {
+      final response = await http.put(
+        Uri.parse('${ApiConfig.baseUrl}/api/objetos/$idObjeto'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'nombre': nombre,
+          'descripcionGeneral': descripcionGeneral,
+          'descripcionDetallada': descripcionDetallada,
+          'idCategoria': idCategoria,
+          'fechaHallazgo': _fechaSql(fechaHallazgo),
+          'fotografia': fotografia,
+          'idLugarEncontrado': idLugarEncontrado,
+          'idLugarActual': idLugarActual,
+        }),
+      );
+
+      if (response.statusCode != 200) {
+        debugPrint(
+          'ERROR actualizarObjeto API: ${response.statusCode} ${response.body}',
+        );
+        return false;
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint('ERROR actualizarObjeto API: $e');
+      return false;
+    }
+  }
+
   static Future<List<Map<String, dynamic>>> obtenerCategorias() async {
     try {
       final response = await http.get(
@@ -87,7 +129,6 @@ class ObjetoRepository {
     }
   }
 
-  // Carga lugares para los dropdowns
   static Future<List<Map<String, dynamic>>> obtenerLugares() async {
     try {
       final response = await http.get(
@@ -127,7 +168,9 @@ class ObjetoRepository {
       );
 
       if (response.statusCode != 200) {
-        debugPrint('ERROR obtenerObjetoPorId API: ${response.statusCode} ${response.body}');
+        debugPrint(
+          'ERROR obtenerObjetoPorId API: ${response.statusCode} ${response.body}',
+        );
         return null;
       }
 
@@ -139,7 +182,6 @@ class ObjetoRepository {
     }
   }
 
-    // Sube la imagen al Storage y retorna la ruta
   static Future<void> subirImagen({
     required String rutaStorage,
     required File archivo,
@@ -148,33 +190,24 @@ class ObjetoRepository {
         .from('objetos-imagenes')
         .upload(rutaStorage, archivo);
   }
-  // Actualiza la fotografía de un objeto ya guardado
+
+  // Actualiza la fotografía por backend, no directo contra tbl_objeto.
   static Future<bool> actualizarFotografia({
-      required int idObjeto,
-      required String url,
-    }) async {
-      try {
-        final response = await http.put(
-          Uri.parse('${ApiConfig.baseUrl}/api/objetos/$idObjeto/fotografia'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'url': url,
-          }),
-        );
+    required int idObjeto,
+    required String url,
+  }) async {
+    try {
+      final response = await http.put(
+        Uri.parse('${ApiConfig.baseUrl}/api/objetos/$idObjeto/fotografia'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'url': url}),
+      );
 
-        if (response.statusCode != 200) {
-          debugPrint(
-            'ERROR actualizarFotografia API: ${response.statusCode} ${response.body}',
-          );
-          return false;
-        }
-
-        return true;
-      } catch (e) {
-        debugPrint('ERROR actualizarFotografia API: $e');
-        return false;
-      }
-      
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('ERROR actualizarFotografia API: $e');
+      return false;
+    }
   }
 
   static Future<void> subirImagenBytes({
@@ -183,34 +216,25 @@ class ObjetoRepository {
     required String nombreArchivo,
   }) async {
     final mimeType = lookupMimeType(nombreArchivo) ?? 'image/jpeg';
-    
-    await supabase.storage
-        .from('objetos-imagenes')
-        .uploadBinary(
+
+    await supabase.storage.from('objetos-imagenes').uploadBinary(
           rutaStorage,
           bytes,
           fileOptions: FileOptions(contentType: mimeType),
         );
   }
-  // Obtiene la URL pública de una imagen en Storage
+
   static String obtenerUrlPublica(String rutaStorage) {
-    return supabase.storage
-        .from('objetos-imagenes')
-        .getPublicUrl(rutaStorage);
+    return supabase.storage.from('objetos-imagenes').getPublicUrl(rutaStorage);
   }
-  // Obtiene objetos vencidos desde la API de backend
+
   static Future<List<Map<String, dynamic>>> obtenerObjetosVencidos() async {
     try {
       final response = await http.get(
         Uri.parse('${ApiConfig.baseUrl}/api/objetos/vencidos'),
       );
 
-      if (response.statusCode != 200) {
-        debugPrint(
-          'ERROR obtenerObjetosVencidos API: ${response.statusCode} ${response.body}',
-        );
-        return [];
-      }
+      if (response.statusCode != 200) return [];
 
       final List<dynamic> data = jsonDecode(response.body);
       return List<Map<String, dynamic>>.from(data);
@@ -220,7 +244,6 @@ class ObjetoRepository {
     }
   }
 
-  // Cambia disposición final por API
   static Future<bool> registrarDisposicionFinal({
     required int idObjeto,
     required int nuevoEstado,
@@ -228,40 +251,30 @@ class ObjetoRepository {
     try {
       final endpoint = nuevoEstado == Estados.objetoDonado
           ? 'donar'
-          : 'desechar';
+          : nuevoEstado == Estados.objetoDesechado
+              ? 'desechar'
+              : null;
+
+      if (endpoint == null) return false;
 
       final response = await http.put(
         Uri.parse('${ApiConfig.baseUrl}/api/objetos/$idObjeto/$endpoint'),
       );
 
-      if (response.statusCode != 200) {
-        debugPrint(
-          'ERROR registrarDisposicionFinal API: ${response.statusCode} ${response.body}',
-        );
-        return false;
-      }
-
-      return true;
+      return response.statusCode == 200;
     } catch (e) {
       debugPrint('ERROR registrarDisposicionFinal API: $e');
       return false;
     }
   }
-  // PARA OCULTAR PUBLICACIONES
+
   static Future<bool> ocultarPublicacion(int idObjeto) async {
     try {
       final response = await http.put(
         Uri.parse('${ApiConfig.baseUrl}/api/objetos/$idObjeto/ocultar-publicacion'),
       );
 
-      if (response.statusCode != 200 && response.statusCode != 204) {
-        debugPrint(
-          'ERROR ocultarPublicacion API: ${response.statusCode} ${response.body}',
-        );
-        return false;
-      }
-
-      return true;
+      return response.statusCode == 200;
     } catch (e) {
       debugPrint('ERROR ocultarPublicacion API: $e');
       return false;

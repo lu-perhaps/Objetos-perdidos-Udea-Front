@@ -9,7 +9,12 @@ import '../Repositories/persona_repository.dart';
 import 'header_udea.dart';
 
 class RegistroObjetoPage extends StatefulWidget {
-  const RegistroObjetoPage({super.key});
+  final Map<String, dynamic>? objetoEditar;
+
+  const RegistroObjetoPage({
+    super.key,
+    this.objetoEditar,
+  });
 
   @override
   State<RegistroObjetoPage> createState() => _RegistroObjetoPageState();
@@ -28,6 +33,14 @@ class _RegistroObjetoPageState extends State<RegistroObjetoPage>
   DateTime? _fechaHallazgo;
   bool _publicar = true;
   bool _guardando = false;
+  String? _fotografiaActualUrl;
+
+  bool get _modoEdicion => widget.objetoEditar != null;
+
+  int? get _idObjetoEditar {
+    final valor = widget.objetoEditar?['id'] ?? widget.objetoEditar?['id_objeto'];
+    return int.tryParse(valor?.toString() ?? '');
+  }
 
   XFile? _imagenSeleccionada;
   Uint8List? _imagenBytes;
@@ -76,6 +89,73 @@ class _RegistroObjetoPageState extends State<RegistroObjetoPage>
     super.dispose();
   }
 
+  int? _extraerIdPorNombre(
+    List<Map<String, dynamic>> lista,
+    String? nombre,
+  ) {
+    if (nombre == null || nombre.trim().isEmpty) return null;
+
+    final normalizado = nombre.toLowerCase().trim();
+
+    for (final item in lista) {
+      final itemNombre = (item['nombre'] ?? '').toString().toLowerCase().trim();
+
+      if (itemNombre == normalizado) {
+        return int.tryParse(item['id'].toString());
+      }
+    }
+
+    return null;
+  }
+
+  void _precargarObjetoParaEditar() {
+    final objeto = widget.objetoEditar;
+    if (objeto == null) return;
+
+    _nombreCtrl.text = (objeto['nombre'] ?? '').toString();
+    _descGeneralCtrl.text =
+        (objeto['descripcionGeneral'] ?? objeto['descripcion_general'] ?? '')
+            .toString();
+    _descDetalladaCtrl.text =
+        (objeto['descripcionDetallada'] ?? objeto['descripcion_detallada'] ?? '')
+            .toString();
+
+    _idCategoria = int.tryParse(
+      (objeto['idCategoria'] ?? objeto['id_categoria'] ?? '').toString(),
+    );
+    _idLugarEncontrado = int.tryParse(
+      (objeto['idLugarEncontrado'] ?? objeto['id_lugar_encontrado'] ?? '')
+          .toString(),
+    );
+    _idLugarActual = int.tryParse(
+      (objeto['idLugarActual'] ?? objeto['id_lugar_actual'] ?? '').toString(),
+    );
+
+    _idCategoria ??= _extraerIdPorNombre(
+      _categorias,
+      (objeto['categoria'] ?? objeto['tbl_categoria']?['nombre'])?.toString(),
+    );
+    _idLugarEncontrado ??= _extraerIdPorNombre(
+      _lugares,
+      (objeto['lugarEncontrado'] ?? objeto['lugar_encontrado'])?.toString(),
+    );
+    _idLugarActual ??= _extraerIdPorNombre(
+      _lugares,
+      (objeto['lugarActual'] ?? objeto['lugar_actual'])?.toString(),
+    );
+
+    final fechaTexto =
+        (objeto['fechaHallazgo'] ?? objeto['fecha_hallazgo'] ?? '').toString();
+    _fechaHallazgo = DateTime.tryParse(fechaTexto);
+
+    _fotografiaActualUrl = (objeto['fotografia'] ?? '').toString().trim();
+    if (_fotografiaActualUrl != null && _fotografiaActualUrl!.isEmpty) {
+      _fotografiaActualUrl = null;
+    }
+
+    _publicar = true;
+  }
+
   Future<void> _cargarDatos() async {
     final categorias = await ObjetoRepository.obtenerCategorias();
     final lugares = await ObjetoRepository.obtenerLugares();
@@ -84,6 +164,7 @@ class _RegistroObjetoPageState extends State<RegistroObjetoPage>
       setState(() {
         _categorias = categorias;
         _lugares = lugares;
+        _precargarObjetoParaEditar();
         _cargando = false;
       });
 
@@ -246,11 +327,61 @@ class _RegistroObjetoPageState extends State<RegistroObjetoPage>
 
     setState(() => _guardando = true);
 
+    if (_modoEdicion) {
+      final idObjeto = _idObjetoEditar;
+
+      if (idObjeto == null) {
+        _mostrarError('No se pudo identificar el objeto a editar');
+        if (mounted) setState(() => _guardando = false);
+        return;
+      }
+
+      String? fotografiaFinal = _fotografiaActualUrl;
+
+      if (_imagenSeleccionada != null) {
+        final url = await _subirImagen(idObjeto);
+        if (url != null) {
+          fotografiaFinal = url;
+        }
+      }
+
+      final ok = await ObjetoRepository.actualizarObjeto(
+        idObjeto: idObjeto,
+        nombre: _nombreCtrl.text.trim(),
+        descripcionGeneral: _descGeneralCtrl.text.trim(),
+        descripcionDetallada: _descDetalladaCtrl.text.trim(),
+        idCategoria: _idCategoria!,
+        idLugarEncontrado: _idLugarEncontrado!,
+        idLugarActual: _idLugarActual!,
+        fechaHallazgo: _fechaHallazgo!,
+        fotografia: fotografiaFinal,
+      );
+
+      if (!mounted) return;
+
+      setState(() => _guardando = false);
+
+      if (!ok) {
+        _mostrarError('No se pudo actualizar el objeto. Intenta de nuevo.');
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Objeto actualizado correctamente'),
+          backgroundColor: AppColors.verde,
+        ),
+      );
+
+      Navigator.pop(context, true);
+      return;
+    }
+
     final idPersona = await PersonaRepository.obtenerIdPersonaActual();
 
     if (idPersona == null) {
       _mostrarError('No se pudo obtener el usuario actual');
-      setState(() => _guardando = false);
+      if (mounted) setState(() => _guardando = false);
       return;
     }
 
@@ -269,7 +400,7 @@ class _RegistroObjetoPageState extends State<RegistroObjetoPage>
 
     if (idObjeto == null) {
       _mostrarError('Error al guardar el objeto. Intenta de nuevo.');
-      setState(() => _guardando = false);
+      if (mounted) setState(() => _guardando = false);
       return;
     }
 
@@ -284,9 +415,9 @@ class _RegistroObjetoPageState extends State<RegistroObjetoPage>
       }
     }
 
-    setState(() => _guardando = false);
-
     if (!mounted) return;
+
+    setState(() => _guardando = false);
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -373,10 +504,11 @@ class _RegistroObjetoPageState extends State<RegistroObjetoPage>
                                 children: [
                                   _HeaderRegistro(
                                     onVolver: () => Navigator.pop(context),
+                                    modoEdicion: _modoEdicion,
                                   ),
                                   const SizedBox(height: 28),
-                                  const Text(
-                                    'Registrar objeto',
+                                  Text(
+                                    _modoEdicion ? 'Editar objeto' : 'Registrar objeto',
                                     style: TextStyle(
                                       color: Colors.white,
                                       fontSize: 31,
@@ -385,8 +517,10 @@ class _RegistroObjetoPageState extends State<RegistroObjetoPage>
                                     ),
                                   ),
                                   const SizedBox(height: 8),
-                                  const Text(
-                                    'Completa la información del objeto encontrado. La descripción detallada y la ubicación exacta son privadas para administración.',
+                                  Text(
+                                    _modoEdicion
+                                        ? 'Actualiza la información del objeto. Los cambios se reflejarán en el inventario y publicaciones relacionadas.'
+                                        : 'Completa la información del objeto encontrado. La descripción detallada y la ubicación exacta son privadas para administración.',
                                     style: TextStyle(
                                       color: Colors.white70,
                                       fontSize: 14,
@@ -405,12 +539,15 @@ class _RegistroObjetoPageState extends State<RegistroObjetoPage>
                                                 children: [
                                                   _ImagenCard(
                                                     imagenBytes: _imagenBytes,
+                                                    fotografiaActualUrl: _fotografiaActualUrl,
                                                     onTap: _seleccionarImagen,
                                                     onRemove: () {
                                                       setState(() {
                                                         _imagenSeleccionada =
                                                             null;
                                                         _imagenBytes = null;
+                                                  _fotografiaActualUrl = null;
+                                                        _fotografiaActualUrl = null;
                                                       });
                                                     },
                                                   ),
@@ -467,11 +604,13 @@ class _RegistroObjetoPageState extends State<RegistroObjetoPage>
                                           children: [
                                             _ImagenCard(
                                               imagenBytes: _imagenBytes,
+                                              fotografiaActualUrl: _fotografiaActualUrl,
                                               onTap: _seleccionarImagen,
                                               onRemove: () {
                                                 setState(() {
                                                   _imagenSeleccionada = null;
                                                   _imagenBytes = null;
+                                                  _fotografiaActualUrl = null;
                                                 });
                                               },
                                             ),
@@ -539,8 +678,8 @@ class _RegistroObjetoPageState extends State<RegistroObjetoPage>
                                             ),
                                       label: Text(
                                         _guardando
-                                            ? 'Guardando...'
-                                            : 'Guardar objeto',
+                                            ? (_modoEdicion ? 'Actualizando...' : 'Guardando...')
+                                            : (_modoEdicion ? 'Actualizar objeto' : 'Guardar objeto'),
                                         style: const TextStyle(
                                           color: Colors.white,
                                           fontSize: 16,
@@ -589,9 +728,11 @@ class _RegistroObjetoPageState extends State<RegistroObjetoPage>
 
 class _HeaderRegistro extends StatelessWidget {
   final VoidCallback onVolver;
+  final bool modoEdicion;
 
   const _HeaderRegistro({
     required this.onVolver,
+    required this.modoEdicion,
   });
 
   @override
@@ -600,10 +741,10 @@ class _HeaderRegistro extends StatelessWidget {
       children: [
         _BotonVolver(onTap: onVolver),
         const SizedBox(width: 14),
-        const Expanded(
+        Expanded(
           child: HeaderUdea(
             titulo: 'Panel Administrativo',
-            subtitulo: 'Registro de objetos',
+            subtitulo: modoEdicion ? 'Edición de objetos' : 'Registro de objetos',
             oscuro: true,
           ),
         ),
@@ -614,20 +755,25 @@ class _HeaderRegistro extends StatelessWidget {
 
 class _ImagenCard extends StatelessWidget {
   final Uint8List? imagenBytes;
+  final String? fotografiaActualUrl;
   final VoidCallback onTap;
   final VoidCallback onRemove;
 
   const _ImagenCard({
     required this.imagenBytes,
+    required this.fotografiaActualUrl,
     required this.onTap,
     required this.onRemove,
   });
 
   @override
   Widget build(BuildContext context) {
+    final tieneImagen = imagenBytes != null ||
+        (fotografiaActualUrl != null && fotografiaActualUrl!.isNotEmpty);
+
     return _WhiteCard(
       padding: const EdgeInsets.all(16),
-      borderColor: imagenBytes != null
+      borderColor: tieneImagen
           ? const Color(0xFF0A8F4D).withOpacity(0.25)
           : null,
       child: Column(
@@ -647,7 +793,7 @@ class _ImagenCard extends StatelessWidget {
                 color: const Color(0xFFF3F4F6),
                 borderRadius: BorderRadius.circular(18),
                 border: Border.all(
-                  color: imagenBytes != null
+                  color: tieneImagen
                       ? const Color(0xFF0A8F4D).withOpacity(0.35)
                       : const Color(0xFFE5E7EB),
                   width: 1.4,
@@ -661,7 +807,22 @@ class _ImagenCard extends StatelessWidget {
                         fit: BoxFit.cover,
                       ),
                     )
-                  : const Column(
+                  : (fotografiaActualUrl != null && fotografiaActualUrl!.isNotEmpty)
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(17),
+                          child: Image.network(
+                            fotografiaActualUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => const Center(
+                              child: Icon(
+                                Icons.broken_image_outlined,
+                                color: Color(0xFF9CA3AF),
+                                size: 34,
+                              ),
+                            ),
+                          ),
+                        )
+                      : const Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
@@ -691,7 +852,7 @@ class _ImagenCard extends StatelessWidget {
                     ),
             ),
           ),
-          if (imagenBytes != null) ...[
+          if (tieneImagen) ...[
             const SizedBox(height: 10),
             SizedBox(
               width: double.infinity,

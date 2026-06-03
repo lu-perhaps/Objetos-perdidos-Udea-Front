@@ -7,6 +7,7 @@ import '../Constants/api_config.dart';
 import '../Repositories/objeto_repository.dart';
 import '../services/auth_service.dart';
 import 'objeto_detail_page.dart';
+import 'registro_objeto_page.dart';
 
 class ObjetosListPage extends StatefulWidget {
   const ObjetosListPage({super.key});
@@ -259,6 +260,22 @@ class _ObjetosListPageState extends State<ObjetosListPage>
                                               esAdmin: _esAdmin,
                                               onOcultar: () =>
                                                   _ocultarPublicacion(objeto),
+                                              onEditar: () async {
+                                                final actualizado =
+                                                    await Navigator.push<bool>(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (_) =>
+                                                        RegistroObjetoPage(
+                                                      objetoEditar: objeto,
+                                                    ),
+                                                  ),
+                                                );
+
+                                                if (actualizado == true) {
+                                                  await _refrescar();
+                                                }
+                                              },
                                             );
                                           },
                                         ),
@@ -407,11 +424,13 @@ class _ObjetoCard extends StatelessWidget {
   final Map<String, dynamic> objeto;
   final bool esAdmin;
   final VoidCallback onOcultar;
+  final VoidCallback onEditar;
 
   const _ObjetoCard({
     required this.objeto,
     required this.esAdmin,
     required this.onOcultar,
+    required this.onEditar,
   });
 
   @override
@@ -499,12 +518,13 @@ class _ObjetoCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 10),
-                  if (fecha.isNotEmpty)
+                  if (esAdmin && fecha.isNotEmpty)
                     _InfoLine(
                       icono: Icons.calendar_today_outlined,
                       texto: 'Hallado: $fecha',
                     ),
-                  const SizedBox(height: 5),
+                  if (esAdmin && fecha.isNotEmpty)
+                    const SizedBox(height: 5),
                   if (esAdmin) ...[
                     _InfoLine(
                       icono: Icons.place_outlined,
@@ -525,6 +545,22 @@ class _ObjetoCard extends StatelessWidget {
                     ),
                   if (esAdmin) ...[
                     const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: onEditar,
+                        icon: const Icon(Icons.edit_outlined),
+                        label: const Text('Editar objeto'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF0A8F4D),
+                          side: const BorderSide(color: Color(0xFF0A8F4D)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton.icon(
